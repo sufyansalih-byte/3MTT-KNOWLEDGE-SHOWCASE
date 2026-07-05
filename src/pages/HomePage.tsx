@@ -49,7 +49,7 @@ export function HomePage() {
             <p className="text-xs text-secondary-500 mt-1">Year SIWES was founded by ITF</p>
           </div>
           <div>
-            <p className="text-3xl font-extrabold text-primary-600">4–6 Months</p>
+            <p className="text-3xl font-extrabold text-primary-600">2–12 Months</p>
             <p className="text-xs text-secondary-500 mt-1">Duration varies by institution type</p>
           </div>
           <div>
