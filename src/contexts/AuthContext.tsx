@@ -12,6 +12,7 @@ interface SignUpExtra {
   city?: string;
   description?: string;
   website?: string;
+  address?: string;
 }
 
 interface AuthContextType {
@@ -145,6 +146,7 @@ const { error: orgError } = await supabase.from('organizations').insert({
         city: extra?.city || null,
         description: extra?.description || null,
         website: extra?.website || null,
+        address: extra?.address || null,
         is_verified: false,
       });
       if (orgError) {
