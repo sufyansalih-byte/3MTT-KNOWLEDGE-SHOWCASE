@@ -440,9 +440,9 @@ function PlacementDetailPage() {
   useEffect(() => {
     const fetchAll = async () => {
       if (!id) return;
-      const { data } = await supabase
+const { data } = await supabase
         .from('placements')
-        .select(`*, organizations(name, industry, city, state, is_verified)`)
+        .select(`*, organizations(name, industry, city, state, address, description, website, is_verified)`)
         .eq('id', id)
         .maybeSingle();
       setPlacement(data);
@@ -550,10 +550,32 @@ function PlacementDetailPage() {
           ))}
         </div>
 
-        {placement.description && (
+{placement.description && (
           <div className="bg-white rounded-xl border border-secondary-200 p-6">
             <h2 className="font-semibold text-secondary-900 mb-3">About This Placement</h2>
             <p className="text-secondary-600 text-sm leading-relaxed">{placement.description}</p>
+          </div>
+        )}
+
+        {(org?.description || org?.website || org?.address) && (
+          <div className="bg-white rounded-xl border border-secondary-200 p-6">
+            <h2 className="font-semibold text-secondary-900 mb-3">About {org?.name}</h2>
+            {org?.description && (
+              <p className="text-secondary-600 text-sm leading-relaxed mb-3">{org.description}</p>
+            )}
+            {org?.address && (
+              <p className="text-secondary-500 text-xs mb-2">📍 {org.address}, {org.city}, {org.state}</p>
+            )}
+            {org?.website && (
+              
+                href={org.website.startsWith('http') ? org.website : `https://${org.website}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-primary-600 hover:text-primary-700 text-sm font-medium"
+              >
+                Visit organization website →
+              </a>
+            )}
           </div>
         )}
 
