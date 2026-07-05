@@ -206,13 +206,21 @@ export function OrganizationDashboardPage() {
     setSelectedApplicant({ ...applicant, documents: [] });
     setLoadingDocuments(true);
 
-    const { data: docs } = await supabase
+const { data: docs } = await supabase
       .from('student_documents')
       .select('id, document_type, file_name, file_url')
       .eq('student_id', applicant.id);
 
     if (docs && docs.length > 0) {
-      setSelectedApplicant((prev) => prev ? { ...prev, documents: docs as ApplicantDocument[] } : null);
+      const docsWithSignedUrls = await Promise.all(
+        docs.map(async (doc) => {
+          const { data: signedData } = await supabase.storage
+            .from('student-documents')
+            .createSignedUrl(doc.file_url, 3600);
+          return { ...doc, file_url: signedData?.signedUrl ?? doc.file_url };
+        })
+      );
+      setSelectedApplicant((prev) => prev ? { ...prev, documents: docsWithSignedUrls as ApplicantDocument[] } : null);
     }
     setLoadingDocuments(false);
   };
