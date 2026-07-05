@@ -904,7 +904,7 @@ const { data: docs } = await supabase
                   >
                     <option value="">Select duration</option>
                     <option value="16">4 Months (ND SIWES)</option>
-                    <option value="24">6 Months (HND / University SIWES)</option>
+                    <option value="24">6 Months (University SIWES)</option>
                     <option value="52">12 Months (Extended / Full-Year Attachment)</option>
                     <option value="12">3 Months (Special attachment)</option>
                     <option value="8">2 Months (Short attachment)</option>
