@@ -79,6 +79,7 @@ export function AuthPage() {
   const [city, setCity] = useState('');
   const [description, setDescription] = useState('');
   const [website, setWebsite] = useState('');
+  const [address, setAddress] = useState('');
 
   const availableCities = getCitiesForState(state);
 
@@ -128,6 +129,7 @@ const result = await signUp(email, password, fullName, role, {
           city,
           description,
           website,
+          address,
         });
         if (result.error) {
           setError(result.error);
@@ -235,6 +237,17 @@ const result = await signUp(email, password, fullName, role, {
                     onChange={(e) => setCacNumber(e.target.value)}
                     required
                     className="w-full px-3 py-2.5 rounded-xl border border-secondary-200 bg-white text-secondary-800 placeholder-secondary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 text-sm transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-secondary-700 mb-1">Street Address (optional)</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 15 Industrial Layout Road"
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl border border-secondary-200 bg-white text-secondary-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
                   />
                 </div>
 
