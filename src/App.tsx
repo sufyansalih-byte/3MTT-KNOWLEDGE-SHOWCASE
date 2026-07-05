@@ -683,7 +683,7 @@ const { data } = await supabase
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-primary-600 hover:text-primary-700 text-sm font-medium"
-              >
+              <a>
                 Visit organization website →
               </a>
             )}
