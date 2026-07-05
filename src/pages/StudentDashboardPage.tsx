@@ -219,12 +219,6 @@ export function StudentDashboardPage() {
         throw new Error(uploadError.message);
       }
 
-      const { data: urlData } = supabase.storage
-        .from('student-documents')
-        .getPublicUrl(fileName);
-
-      const fileUrl = urlData.publicUrl;
-
       const { error: dbError } = await supabase
         .from('student_documents')
         .upsert(
@@ -232,7 +226,7 @@ export function StudentDashboardPage() {
             student_id: studentId,
             document_type: documentType,
             file_name: file.name,
-            file_url: fileUrl,
+            file_url: fileName,
             updated_at: new Date().toISOString(),
           },
           { onConflict: 'student_id,document_type' }
