@@ -679,11 +679,10 @@ const { data } = await supabase
             )}
             {org?.website && (
               
-                href={org.website.startsWith('http') ? org.website : `https://${org.website}`}
+                <a href={org.website.startsWith('http') ? org.website : `https://${org.website}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-primary-600 hover:text-primary-700 text-sm font-medium"
-              <a>
+                className="inline-flex items-center gap-1 text-primary-600 hover:text-primary-700 text-sm font-medium">
                 Visit organization website →
               </a>
             )}
