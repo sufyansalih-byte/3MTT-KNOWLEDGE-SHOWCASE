@@ -250,6 +250,31 @@ interface AdminOrgRow {
   created_at: string;
 }
 
+function downloadCSV(filename: string, rows: Record<string, any>[]) {
+  if (rows.length === 0) {
+    alert('No data available to export.');
+    return;
+  }
+  const headers = Object.keys(rows[0]);
+  const escape = (val: any) => {
+    const str = val === null || val === undefined ? '' : String(val);
+    return `"${str.replace(/"/g, '""')}"`;
+  };
+  const csvContent = [
+    headers.join(','),
+    ...rows.map((row) => headers.map((h) => escape(row[h])).join(',')),
+  ].join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 function AdminDashboardPage() {
   const { user, profile, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
@@ -290,13 +315,12 @@ function AdminDashboardPage() {
     if (profile?.role === 'admin') fetchOrgs();
   }, [profile]);
 
-  const handleApprove = async (id: string, approve: boolean) => {
+const handleApprove = async (id: string, approve: boolean) => {
     setUpdatingId(id);
     const { error } = await supabase
       .from('organizations')
       .update({ is_verified: approve })
       .eq('id', id);
-
     if (!error) {
       setOrgs((prev) =>
         prev.map((o) => (o.id === id ? { ...o, is_verified: approve } : o))
@@ -307,6 +331,94 @@ function AdminDashboardPage() {
     setUpdatingId(null);
   };
 
+  const [exporting, setExporting] = useState<string | null>(null);
+
+  const exportOrganizations = () => {
+    downloadCSV('organizations.csv', orgs.map((o) => ({
+      name: o.name,
+      industry: o.industry || '',
+      city: o.city || '',
+      state: o.state || '',
+      cac_number: o.cac_number || '',
+      contact_name: o.contact_name || '',
+      is_verified: o.is_verified ? 'Yes' : 'No',
+      created_at: new Date(o.created_at).toLocaleDateString('en-NG'),
+    })));
+  };
+
+  const exportStudents = async () => {
+    setExporting('students');
+    const { data } = await supabase
+      .from('students')
+      .select('institution, department, level, matric_number, created_at, profiles(full_name, email)');
+    downloadCSV('students.csv', (data ?? []).map((s: any) => ({
+      full_name: s.profiles?.full_name || '',
+      email: s.profiles?.email || '',
+      institution: s.institution || '',
+      department: s.department || '',
+      level: s.level || '',
+      matric_number: s.matric_number || '',
+      registered_on: new Date(s.created_at).toLocaleDateString('en-NG'),
+    })));
+    setExporting(null);
+  };
+
+  const exportApplications = async () => {
+    setExporting('applications');
+    const { data } = await supabase
+      .from('applications')
+      .select('status, cover_letter, created_at, students(institution, matric_number, profiles(full_name, email)), placements(title, organizations(name))');
+    downloadCSV('applications.csv', (data ?? []).map((a: any) => ({
+      student_name: a.students?.profiles?.full_name || '',
+      student_email: a.students?.profiles?.email || '',
+      institution: a.students?.institution || '',
+      matric_number: a.students?.matric_number || '',
+      placement_title: a.placements?.title || '',
+      organization: a.placements?.organizations?.name || '',
+      status: a.status,
+      applied_on: new Date(a.created_at).toLocaleDateString('en-NG'),
+    })));
+    setExporting(null);
+  };
+
+  const exportAcceptedStudents = async () => {
+    setExporting('accepted');
+    const { data } = await supabase
+      .from('applications')
+      .select('created_at, students(institution, matric_number, profiles(full_name, email)), placements(title, organizations(name))')
+      .eq('status', 'accepted');
+    downloadCSV('accepted_students.csv', (data ?? []).map((a: any) => ({
+      student_name: a.students?.profiles?.full_name || '',
+      student_email: a.students?.profiles?.email || '',
+      institution: a.students?.institution || '',
+      matric_number: a.students?.matric_number || '',
+      placement_title: a.placements?.title || '',
+      organization: a.placements?.organizations?.name || '',
+      accepted_on: new Date(a.created_at).toLocaleDateString('en-NG'),
+    })));
+    setExporting(null);
+  };
+
+  const exportPlacements = async () => {
+    setExporting('placements');
+    const { data } = await supabase
+      .from('placements')
+      .select('title, department, duration_weeks, slots_available, is_active, deadline, created_at, organizations(name, city, state)');
+    downloadCSV('placements.csv', (data ?? []).map((p: any) => ({
+      title: p.title,
+      organization: p.organizations?.name || '',
+      city: p.organizations?.city || '',
+      state: p.organizations?.state || '',
+      department: p.department || '',
+      duration_weeks: p.duration_weeks || '',
+      slots_available: p.slots_available,
+      is_active: p.is_active ? 'Yes' : 'No',
+      deadline: p.deadline ? new Date(p.deadline).toLocaleDateString('en-NG') : '',
+      posted_on: new Date(p.created_at).toLocaleDateString('en-NG'),
+    })));
+    setExporting(null);
+  };
+
   if (authLoading || (profile?.role === 'admin' && loading)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-secondary-50">
@@ -314,7 +426,6 @@ function AdminDashboardPage() {
       </div>
     );
   }
-
   if (profile?.role !== 'admin') {
     return null;
   }
