@@ -10,6 +10,8 @@ interface SignUpExtra {
   contact_name?: string;
   state?: string;
   city?: string;
+  description?: string;
+  website?: string;
 }
 
 interface AuthContextType {
@@ -133,7 +135,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     if (role === 'organization') {
-      const { error: orgError } = await supabase.from('organizations').insert({
+const { error: orgError } = await supabase.from('organizations').insert({
         profile_id: newUserId,
         name: fullName,
         industry: extra?.industry || null,
@@ -141,6 +143,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         contact_name: extra?.contact_name || null,
         state: extra?.state || null,
         city: extra?.city || null,
+        description: extra?.description || null,
+        website: extra?.website || null,
         is_verified: false,
       });
       if (orgError) {
