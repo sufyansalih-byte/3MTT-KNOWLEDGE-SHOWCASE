@@ -77,6 +77,8 @@ export function AuthPage() {
   const [contactName, setContactName] = useState('');
   const [state, setState] = useState('');
   const [city, setCity] = useState('');
+  const [description, setDescription] = useState('');
+  const [website, setWebsite] = useState('');
 
   const availableCities = getCitiesForState(state);
 
@@ -116,7 +118,7 @@ useEffect(() => {
           setError(result.error);
         }
       } else {
-        const result = await signUp(email, password, fullName, role, {
+const result = await signUp(email, password, fullName, role, {
           institution,
           matric_number: matricNumber,
           industry,
@@ -124,6 +126,8 @@ useEffect(() => {
           contact_name: contactName,
           state,
           city,
+          description,
+          website,
         });
         if (result.error) {
           setError(result.error);
@@ -299,7 +303,7 @@ useEffect(() => {
                   </div>
                 </div>
 
-                <div>
+<div>
                   <label className="block text-xs font-semibold text-secondary-700 mb-1">HR Representative / Contact Name</label>
                   <input
                     type="text"
@@ -307,6 +311,28 @@ useEffect(() => {
                     value={contactName}
                     onChange={(e) => setContactName(e.target.value)}
                     required
+                    className="w-full px-3 py-2.5 rounded-xl border border-secondary-200 bg-white text-secondary-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-secondary-700 mb-1">Company Description (optional)</label>
+                  <textarea
+                    rows={3}
+                    placeholder="Briefly describe what your organization does and what trainees can expect to learn."
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl border border-secondary-200 bg-white text-secondary-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-secondary-700 mb-1">Company Website (optional)</label>
+                  <input
+                    type="url"
+                    placeholder="https://yourcompany.com"
+                    value={website}
+                    onChange={(e) => setWebsite(e.target.value)}
                     className="w-full px-3 py-2.5 rounded-xl border border-secondary-200 bg-white text-secondary-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
                   />
                 </div>
