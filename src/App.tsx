@@ -461,6 +461,27 @@ const handleApprove = async (id: string, approve: boolean) => {
           </div>
         )}
 
+        <div className="mb-8 bg-white rounded-xl border border-secondary-200 p-4">
+          <h2 className="font-semibold text-sm text-secondary-900 mb-3">Export Data for Analysis</h2>
+          <div className="flex flex-wrap gap-2">
+            <button onClick={exportOrganizations} className="px-3 py-2 bg-secondary-50 hover:bg-secondary-100 border border-secondary-200 text-secondary-700 rounded-lg text-xs font-medium">
+              Organizations (CSV)
+            </button>
+            <button onClick={exportStudents} disabled={exporting === 'students'} className="px-3 py-2 bg-secondary-50 hover:bg-secondary-100 border border-secondary-200 text-secondary-700 rounded-lg text-xs font-medium disabled:opacity-50">
+              {exporting === 'students' ? 'Exporting...' : 'Students (CSV)'}
+            </button>
+            <button onClick={exportApplications} disabled={exporting === 'applications'} className="px-3 py-2 bg-secondary-50 hover:bg-secondary-100 border border-secondary-200 text-secondary-700 rounded-lg text-xs font-medium disabled:opacity-50">
+              {exporting === 'applications' ? 'Exporting...' : 'All Applications (CSV)'}
+            </button>
+            <button onClick={exportAcceptedStudents} disabled={exporting === 'accepted'} className="px-3 py-2 bg-success-50 hover:bg-success-100 border border-success-200 text-success-700 rounded-lg text-xs font-medium disabled:opacity-50">
+              {exporting === 'accepted' ? 'Exporting...' : 'Accepted Students (CSV)'}
+            </button>
+            <button onClick={exportPlacements} disabled={exporting === 'placements'} className="px-3 py-2 bg-secondary-50 hover:bg-secondary-100 border border-secondary-200 text-secondary-700 rounded-lg text-xs font-medium disabled:opacity-50">
+              {exporting === 'placements' ? 'Exporting...' : 'Placements (CSV)'}
+            </button>
+          </div>
+        </div>
+
         <div className="mb-8">
           <h2 className="font-semibold text-lg text-secondary-900 mb-4">
             Pending Approval ({pending.length})
