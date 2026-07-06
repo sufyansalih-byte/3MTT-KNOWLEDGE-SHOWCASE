@@ -69,9 +69,10 @@ export function HomePage() {
           How SIWES Connect Works
         </h2>
 
-        <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl mx-auto">
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-secondary-200 text-center">
             <GraduationCap className="w-8 h-8 text-primary-600 mx-auto mb-3" />
+            <div className="text-xs font-bold text-primary-500 mb-1">STEP 1</div>
             <h3 className="font-semibold text-secondary-900 mb-2">Create Your Profile</h3>
             <p className="text-sm text-secondary-600">
               Sign up as a student with your matric number and institution, or register your organization with your CAC number.
@@ -79,18 +80,29 @@ export function HomePage() {
           </div>
 
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-secondary-200 text-center">
+            <CheckCircle2 className="w-8 h-8 text-primary-600 mx-auto mb-3" />
+            <div className="text-xs font-bold text-primary-500 mb-1">STEP 2</div>
+            <h3 className="font-semibold text-secondary-900 mb-2">Verify Your Documents</h3>
+            <p className="text-sm text-secondary-600">
+              Upload your Institution ID, passport photograph, and SIWES introduction letter to unlock applications.
+            </p>
+          </div>
+
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-secondary-200 text-center">
             <Search className="w-8 h-8 text-primary-600 mx-auto mb-3" />
+            <div className="text-xs font-bold text-primary-500 mb-1">STEP 3</div>
             <h3 className="font-semibold text-secondary-900 mb-2">Browse & Apply</h3>
             <p className="text-sm text-secondary-600">
-              Students browse verified placements filtered by state, industry, and duration. Apply with a cover letter in one click.
+              Browse verified placements filtered by state, industry, and duration. Apply with a cover letter in one click.
             </p>
           </div>
 
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-secondary-200 text-center">
             <CheckCircle2 className="w-8 h-8 text-primary-600 mx-auto mb-3" />
+            <div className="text-xs font-bold text-primary-500 mb-1">STEP 4</div>
             <h3 className="font-semibold text-secondary-900 mb-2">Get Placed & Log Hours</h3>
             <p className="text-sm text-secondary-600">
-              Receive your placement confirmation and log your daily SIWES activities digitally — no paper logbook needed.
+              Receive your placement confirmation and log daily SIWES activities digitally — Used to fill logbook weekly.
             </p>
           </div>
         </div>
