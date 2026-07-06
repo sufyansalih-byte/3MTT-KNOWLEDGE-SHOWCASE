@@ -427,7 +427,7 @@ useEffect(() => {
       </div>
       <div className="container-app py-6 lg:py-8 px-4 max-w-7xl mx-auto">
         {/* Desktop Interface Header Component */}
-        <div className="hidden lg:flex items-center justify-between mb-8 border-b border-secondary-200 pb-5">
+       <div className="hidden lg:flex items-center justify-between mb-8 border-b border-secondary-200 pb-5">
           <div>
             <h1 className="font-heading text-2xl sm:text-3xl font-bold text-secondary-900">Student Dashboard</h1>
             <p className="text-secondary-600 mt-1">Track your applications, manage your logbook, and upload documents</p>
@@ -437,6 +437,35 @@ useEffect(() => {
               <Briefcase className="w-4 h-4" />
               Browse Placements
             </button>
+            <div className="relative">
+              <button
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="relative p-2.5 rounded-xl bg-secondary-100 hover:bg-secondary-200 text-secondary-600 transition-all"
+              >
+                <Bell className="w-5 h-5" />
+                {notifications.some((n) => !n.is_read) && (
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-error-500 rounded-full" />
+                )}
+              </button>
+              {showNotifications && (
+                <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl border border-secondary-200 shadow-lg z-50 max-h-80 overflow-y-auto">
+                  {notifications.length === 0 ? (
+                    <p className="p-4 text-sm text-secondary-500 text-center">No notifications yet.</p>
+                  ) : (
+                    notifications.map((n) => (
+                      <button
+                        key={n.id}
+                        onClick={() => markNotificationRead(n.id)}
+                        className={`w-full text-left p-3 border-b border-secondary-100 last:border-0 hover:bg-secondary-50 ${!n.is_read ? 'bg-primary-50/50' : ''}`}
+                      >
+                        <p className="text-xs text-secondary-800">{n.message}</p>
+                        <p className="text-[10px] text-secondary-400 mt-1">{new Date(n.created_at).toLocaleDateString('en-NG')}</p>
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
             <button onClick={handleLogoutAction} className="flex items-center gap-2 px-4 py-2.5 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 rounded-xl text-sm font-medium transition-all">
               <LogOut className="w-4 h-4" />
               Log Out
