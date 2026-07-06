@@ -116,6 +116,32 @@ export function OrganizationDashboardPage() {
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [loadingDocuments, setLoadingDocuments] = useState(false);
 
+  interface NotificationRow {
+    id: string;
+    message: string;
+    link: string | null;
+    is_read: boolean;
+    created_at: string;
+  }
+  const [notifications, setNotifications] = useState<NotificationRow[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+
+  const fetchNotifications = useCallback(async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(20);
+    setNotifications(data ?? []);
+  }, [user]);
+
+  const markNotificationRead = async (notifId: string) => {
+    await supabase.from('notifications').update({ is_read: true }).eq('id', notifId);
+    setNotifications((prev) => prev.map((n) => (n.id === notifId ? { ...n, is_read: true } : n)));
+  };
+
   // Create placement modal
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [formTitle, setFormTitle] = useState('');
@@ -195,6 +221,10 @@ export function OrganizationDashboardPage() {
   useEffect(() => {
     if (user) fetchData();
   }, [user, fetchData]);
+
+  useEffect(() => {
+    if (user) fetchNotifications();
+  }, [user, fetchNotifications]);
 
   // Handlers
   const handleLogout = async () => {
@@ -330,6 +360,35 @@ const { data: docs } = await supabase
             >
               <Home className="w-4 h-4" />
             </button>
+            <div className="relative">
+              <button
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="relative p-2 rounded-xl bg-secondary-100 text-secondary-600 hover:bg-secondary-200"
+              >
+                <Bell className="w-4 h-4" />
+                {notifications.some((n) => !n.is_read) && (
+                  <span className="absolute top-1 right-1 w-2 h-2 bg-error-500 rounded-full" />
+                )}
+              </button>
+              {showNotifications && (
+                <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-xl border border-secondary-200 shadow-lg z-50 max-h-80 overflow-y-auto">
+                  {notifications.length === 0 ? (
+                    <p className="p-4 text-sm text-secondary-500 text-center">No notifications yet.</p>
+                  ) : (
+                    notifications.map((n) => (
+                      <button
+                        key={n.id}
+                        onClick={() => markNotificationRead(n.id)}
+                        className={`w-full text-left p-3 border-b border-secondary-100 last:border-0 hover:bg-secondary-50 ${!n.is_read ? 'bg-primary-50/50' : ''}`}
+                      >
+                        <p className="text-xs text-secondary-800">{n.message}</p>
+                        <p className="text-[10px] text-secondary-400 mt-1">{new Date(n.created_at).toLocaleDateString('en-NG')}</p>
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
             <button
               onClick={handleLogout}
               className="p-2 rounded-xl bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-100"
@@ -397,6 +456,35 @@ const { data: docs } = await supabase
               <Home className="w-4 h-4" />
               Home
             </button>
+            <div className="relative">
+              <button
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="relative p-2.5 rounded-xl bg-secondary-50 border border-secondary-200 text-secondary-700 hover:bg-secondary-100 transition-all"
+              >
+                <Bell className="w-5 h-5" />
+                {notifications.some((n) => !n.is_read) && (
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-error-500 rounded-full" />
+                )}
+              </button>
+              {showNotifications && (
+                <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl border border-secondary-200 shadow-lg z-50 max-h-80 overflow-y-auto">
+                  {notifications.length === 0 ? (
+                    <p className="p-4 text-sm text-secondary-500 text-center">No notifications yet.</p>
+                  ) : (
+                    notifications.map((n) => (
+                      <button
+                        key={n.id}
+                        onClick={() => markNotificationRead(n.id)}
+                        className={`w-full text-left p-3 border-b border-secondary-100 last:border-0 hover:bg-secondary-50 ${!n.is_read ? 'bg-primary-50/50' : ''}`}
+                      >
+                        <p className="text-xs text-secondary-800">{n.message}</p>
+                        <p className="text-[10px] text-secondary-400 mt-1">{new Date(n.created_at).toLocaleDateString('en-NG')}</p>
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
             <button
               onClick={handleLogout}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-rose-50 border border-rose-200 text-rose-700 hover:bg-rose-100"
