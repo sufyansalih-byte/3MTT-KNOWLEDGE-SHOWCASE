@@ -13,8 +13,21 @@ import {
 import { supabase } from '../lib/supabase';
 import type { Placement } from '../types/database';
 
-const industries = ['All', 'Technology', 'Finance', 'Healthcare', 'Engineering', 'Education', 'Agriculture', 'Manufacturing'];
-const states = ['All', 'Lagos', 'Abuja', 'Rivers', 'Kano', 'Oyo', 'Kaduna', 'Anambra'];
+const industries = [
+  { value: 'All', label: 'All Industries' },
+  { value: 'software', label: 'Software & IT' },
+  { value: 'mechanical', label: 'Mechanical' },
+  { value: 'electrical', label: 'Power & Hardware' },
+  { value: 'Civil', label: 'Civil Engineering' },
+];
+
+const states = [
+  'All', 'Abia', 'Adamawa', 'Akwa Ibom', 'Anambra', 'Bauchi', 'Bayelsa', 'Benue',
+  'Borno', 'Cross River', 'Delta', 'Ebonyi', 'Edo', 'Ekiti', 'Enugu', 'FCT (Abuja)',
+  'Gombe', 'Imo', 'Jigawa', 'Kaduna', 'Kano', 'Katsina', 'Kebbi', 'Kogi', 'Kwara',
+  'Lagos', 'Nasarawa', 'Niger', 'Ogun', 'Ondo', 'Osun', 'Oyo', 'Plateau', 'Rivers',
+  'Sokoto', 'Taraba', 'Yobe', 'Zamfara',
+];
 
 export function PlacementsPage() {
   const [placements, setPlacements] = useState<Placement[]>([]);
@@ -113,14 +126,14 @@ export function PlacementsPage() {
               />
             </div>
             <div className="flex gap-3">
-              <select
+             <select
                 value={selectedIndustry}
                 onChange={(e) => setSelectedIndustry(e.target.value)}
                 className="px-4 py-3 rounded-xl border border-secondary-200 bg-white text-secondary-700 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
               >
                 {industries.map((industry) => (
-                  <option key={industry} value={industry}>
-                    {industry === 'All' ? 'All Industries' : industry}
+                  <option key={industry.value} value={industry.value}>
+                    {industry.label}
                   </option>
                 ))}
               </select>
