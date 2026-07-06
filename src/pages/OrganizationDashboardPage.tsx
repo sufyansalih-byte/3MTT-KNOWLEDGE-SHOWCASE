@@ -1159,7 +1159,7 @@ const { data: docs } = await supabase
                           </div>
                           {doc ? (
                             
-                              href={doc.file_url}
+                              <a href={doc.file_url}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="flex items-center gap-1 text-xs font-medium text-primary-600 hover:text-primary-700"
@@ -1177,11 +1177,26 @@ const { data: docs } = await supabase
                 )}
               </div>
 
+              {/* Contact Info - shown once accepted */}
+              {selectedApplicant.status === 'accepted' && (
+                <div className="bg-success-50 border border-success-200 rounded-xl p-4">
+                  <p className="text-xs font-semibold text-success-800 uppercase mb-2">
+                    Trainee Accepted — Contact Details
+                  </p>
+                  <p className="text-sm text-secondary-700">
+                    <span className="font-medium">Email:</span>{' '}
+                    <a href={`mailto:${selectedApplicant.email}`} className="text-primary-600 hover:underline">
+                      {selectedApplicant.email}
+                    </a>
+                  </p>
+                  <p className="text-xs text-secondary-500 mt-2">
+                    Reach out directly to arrange resumption details and next steps for the attachment.
+                  </p>
+                </div>
+              )}
+
               {/* Actions */}
               <div className="pt-4 border-t border-secondary-100 flex gap-3">
-                <Button variant="outline" leftIcon={<MessageSquare className="w-4 h-4" />}>
-                  Message Trainee
-                </Button>
                 <div className="flex-1" />
                 {selectedApplicant.status === 'pending' && (
                   <>
