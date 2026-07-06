@@ -79,6 +79,16 @@ export function StudentDashboardPage() {
   const [uploadingType, setUploadingType] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
+  interface NotificationRow {
+    id: string;
+    message: string;
+    link: string | null;
+    is_read: boolean;
+    created_at: string;
+  }
+  const [notifications, setNotifications] = useState<NotificationRow[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+
   useEffect(() => {
     if (!authLoading && !user) {
       navigate('/auth');
@@ -154,6 +164,24 @@ export function StudentDashboardPage() {
     setApplicationsLoading(false);
   }, [studentId]);
 
+  const fetchNotifications = useCallback(async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(20);
+    setNotifications(data ?? []);
+  }, [user]);
+
+  const markNotificationRead = async (notifId: string) => {
+    await supabase.from('notifications').update({ is_read: true }).eq('id', notifId);
+    setNotifications((prev) => prev.map((n) => (n.id === notifId ? { ...n, is_read: true } : n)));
+  };
+
+  const fetchDocuments = useCallback(async () => {
+  
   const fetchDocuments = useCallback(async () => {
     if (!studentId) return;
 
@@ -193,13 +221,17 @@ export function StudentDashboardPage() {
     setLogbookLoading(false);
   }, [studentId]);
 
-  useEffect(() => {
+useEffect(() => {
     if (studentId) {
       fetchApplications();
       fetchDocuments();
       fetchLogbookEntries();
     }
   }, [studentId, fetchApplications, fetchDocuments, fetchLogbookEntries]);
+
+  useEffect(() => {
+    if (user) fetchNotifications();
+  }, [user, fetchNotifications]);
 
   const handleDocumentUpload = async (documentType: 'id_card' | 'passport_photo' | 'siwes_letter', file: File) => {
     if (!studentId) return;
@@ -341,10 +373,35 @@ export function StudentDashboardPage() {
             <div className="flex items-center gap-2">
               <button onClick={() => navigate('/placements')} className="p-2 rounded-xl bg-primary-50 text-primary-600 border border-primary-100 text-xs font-medium">Browse</button>
               <button onClick={handleLogoutAction} className="p-2 rounded-xl bg-rose-50 text-rose-600 border border-rose-100 text-xs font-medium">Log Out</button>
-              <button className="relative p-2 rounded-xl bg-secondary-100 text-secondary-600">
-                <Bell className="w-5 h-5" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-error-500 rounded-full" />
-              </button>
+              <div className="relative">
+                <button
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  className="relative p-2 rounded-xl bg-secondary-100 text-secondary-600"
+                >
+                  <Bell className="w-5 h-5" />
+                  {notifications.some((n) => !n.is_read) && (
+                    <span className="absolute top-1 right-1 w-2 h-2 bg-error-500 rounded-full" />
+                  )}
+                </button>
+                {showNotifications && (
+                  <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-xl border border-secondary-200 shadow-lg z-50 max-h-80 overflow-y-auto">
+                    {notifications.length === 0 ? (
+                      <p className="p-4 text-sm text-secondary-500 text-center">No notifications yet.</p>
+                    ) : (
+                      notifications.map((n) => (
+                        <button
+                          key={n.id}
+                          onClick={() => markNotificationRead(n.id)}
+                          className={`w-full text-left p-3 border-b border-secondary-100 last:border-0 hover:bg-secondary-50 ${!n.is_read ? 'bg-primary-50/50' : ''}`}
+                        >
+                          <p className="text-xs text-secondary-800">{n.message}</p>
+                          <p className="text-[10px] text-secondary-400 mt-1">{new Date(n.created_at).toLocaleDateString('en-NG')}</p>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
