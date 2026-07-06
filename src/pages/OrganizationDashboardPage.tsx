@@ -995,7 +995,6 @@ const { data: docs } = await supabase
                     <option value="24">6 Months (University SIWES)</option>
                     <option value="52">12 Months (Extended / Full-Year Attachment)</option>
                     <option value="12">3 Months (Special attachment)</option>
-                    <option value="8">2 Months (Short attachment)</option>
                   </select>
                 </div>
               </div>
@@ -1140,7 +1139,13 @@ const { data: docs } = await supabase
                           className="flex items-center justify-between p-3 rounded-xl bg-secondary-50 border border-secondary-100"
                         >
                           <div className="flex items-center gap-3">
-                            {doc ? (
+                            {docType.type === 'passport_photo' && doc ? (
+                              <img
+                                src={doc.file_url}
+                                alt="Passport"
+                                className="w-10 h-10 rounded-lg object-cover border border-secondary-200 flex-shrink-0"
+                              />
+                            ) : doc ? (
                               <FileCheck className="w-5 h-5 text-success-500" />
                             ) : (
                               <FileText className="w-5 h-5 text-secondary-300" />
@@ -1153,7 +1158,7 @@ const { data: docs } = await supabase
                             </div>
                           </div>
                           {doc ? (
-                            <a
+                            
                               href={doc.file_url}
                               target="_blank"
                               rel="noopener noreferrer"
