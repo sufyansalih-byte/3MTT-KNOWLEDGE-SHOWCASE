@@ -72,9 +72,11 @@ export function PlacementsPage() {
       placement.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       placement.organizations?.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesIndustry =
-      selectedIndustry === 'All' || placement.organizations?.industry === selectedIndustry;
+      selectedIndustry === 'All' ||
+      placement.organizations?.industry?.trim().toLowerCase() === selectedIndustry.trim().toLowerCase();
     const matchesState =
-      selectedState === 'All' || placement.organizations?.state === selectedState;
+      selectedState === 'All' ||
+      placement.organizations?.state?.trim().toLowerCase() === selectedState.trim().toLowerCase();
 
     return matchesSearch && matchesIndustry && matchesState;
   });
