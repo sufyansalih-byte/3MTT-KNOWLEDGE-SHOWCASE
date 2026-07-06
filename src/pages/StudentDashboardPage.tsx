@@ -179,8 +179,6 @@ export function StudentDashboardPage() {
     await supabase.from('notifications').update({ is_read: true }).eq('id', notifId);
     setNotifications((prev) => prev.map((n) => (n.id === notifId ? { ...n, is_read: true } : n)));
   };
-
-  const fetchDocuments = useCallback(async () => {
   
   const fetchDocuments = useCallback(async () => {
     if (!studentId) return;
