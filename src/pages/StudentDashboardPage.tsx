@@ -37,6 +37,8 @@ interface RealApplication {
   organization_name: string;
   organization_city: string;
   organization_state: string;
+  organization_contact_name: string;
+  organization_email: string;
 }
 
 interface LogbookEntry {
@@ -137,7 +139,10 @@ export function StudentDashboardPage() {
           organizations (
             name,
             city,
-            state
+            state,
+            contact_name,
+            profile_id,
+            profiles ( email )
           )
         )
       `)
@@ -158,6 +163,8 @@ export function StudentDashboardPage() {
       organization_name: row.placements?.organizations?.name ?? '',
       organization_city: row.placements?.organizations?.city ?? '',
       organization_state: row.placements?.organizations?.state ?? '',
+      organization_contact_name: row.placements?.organizations?.contact_name ?? '',
+      organization_email: row.placements?.organizations?.profiles?.email ?? '',
     }));
 
     setApplications(shaped);
@@ -179,7 +186,7 @@ export function StudentDashboardPage() {
     await supabase.from('notifications').update({ is_read: true }).eq('id', notifId);
     setNotifications((prev) => prev.map((n) => (n.id === notifId ? { ...n, is_read: true } : n)));
   };
-  
+
   const fetchDocuments = useCallback(async () => {
     if (!studentId) return;
 
@@ -219,7 +226,7 @@ export function StudentDashboardPage() {
     setLogbookLoading(false);
   }, [studentId]);
 
-useEffect(() => {
+  useEffect(() => {
     if (studentId) {
       fetchApplications();
       fetchDocuments();
@@ -427,7 +434,7 @@ useEffect(() => {
       </div>
       <div className="container-app py-6 lg:py-8 px-4 max-w-7xl mx-auto">
         {/* Desktop Interface Header Component */}
-       <div className="hidden lg:flex items-center justify-between mb-8 border-b border-secondary-200 pb-5">
+        <div className="hidden lg:flex items-center justify-between mb-8 border-b border-secondary-200 pb-5">
           <div>
             <h1 className="font-heading text-2xl sm:text-3xl font-bold text-secondary-900">Student Dashboard</h1>
             <p className="text-secondary-600 mt-1">Track your applications, manage your logbook, and upload documents</p>
@@ -601,6 +608,19 @@ useEffect(() => {
                         </div>
                         {getStatusBadge(app.status)}
                       </div>
+                      {app.status === 'accepted' && app.organization_email && (
+                        <div className="mt-3 p-3 rounded-xl bg-success-50 border border-success-200">
+                          <p className="text-xs font-semibold text-success-800 uppercase mb-1">You're Accepted! Contact the Organization</p>
+                          <p className="text-sm text-secondary-700">
+                            {app.organization_contact_name && (
+                              <span className="font-medium">{app.organization_contact_name}</span>
+                            )}{' '}
+                            <a href={`mailto:${app.organization_email}`} className="text-primary-600 hover:underline">
+                              {app.organization_email}
+                            </a>
+                          </p>
+                        </div>
+                      )}
                       <div className="flex items-center gap-2 text-xs text-secondary-400 border-t border-secondary-100 pt-3 mt-3">
                         <Calendar className="w-3.5 h-3.5" />
                         <span>Applied on {new Date(app.created_at).toLocaleDateString()}</span>
