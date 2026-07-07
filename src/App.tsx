@@ -298,7 +298,7 @@ function AdminDashboardPage() {
 
     const { data, error } = await supabase
       .from('organizations')
-      .select('id, name, industry, city, state, cac_number, contact_name, is_verified, created_at')
+      .select('id, name, industry, city, state, address, description, website, cac_number, contact_name, is_verified, created_at')
       .order('created_at', { ascending: false });
 
     if (error) {
