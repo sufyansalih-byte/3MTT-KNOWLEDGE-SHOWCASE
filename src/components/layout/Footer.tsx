@@ -13,14 +13,12 @@ import {
 const footerLinks = {
   platform: [
     { label: 'Find Placements', href: '/placements' },
-    { label: 'Organizations', href: '/organizations' },
-    { label: 'For Students', href: '/students' },
-    { label: 'For Organizations', href: '/for-organizations' },
+    { label: 'Brief History', href: '/history' },
+    { label: 'About', href: '/about' },
   ],
   resources: [
-    { label: 'Help Center', href: '/help' },
-    { label: 'SIWES Guide', href: '/guide' },
-    { label: 'Blog', href: '/blog' },
+    { label: 'SIWES Guide', href: '/history' },
+    { label: 'Blog', href: '#' },
     { label: 'FAQs', href: '/faq' },
   ],
   legal: [
@@ -31,10 +29,10 @@ const footerLinks = {
 };
 
 const socialLinks = [
-  { icon: Facebook, href: 'https://facebook.com', label: 'Facebook' },
-  { icon: Twitter, href: 'https://twitter.com', label: 'Twitter' },
-  { icon: Linkedin, href: 'https://linkedin.com', label: 'LinkedIn' },
-  { icon: Instagram, href: 'https://instagram.com', label: 'Instagram' },
+  { icon: Facebook, href: '#', label: 'Facebook' },
+  { icon: Twitter, href: '#', label: 'Twitter' },
+  { icon: Linkedin, href: '#', label: 'LinkedIn' },
+  { icon: Instagram, href: '#', label: 'Instagram' },
 ];
 
 export function Footer() {
@@ -42,10 +40,8 @@ export function Footer() {
 
   return (
     <footer className="bg-secondary-900 text-white">
-      {/* Main Footer */}
       <div className="container-app py-12 lg:py-16">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 lg:gap-8">
-          {/* Brand Section */}
           <div className="lg:col-span-2">
             <Link to="/" className="inline-flex items-center gap-2.5 mb-4">
               <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center">
@@ -60,32 +56,32 @@ export function Footer() {
               Building the bridge between education and industry.
             </p>
 
-            {/* Contact Info */}
             <div className="space-y-3 text-sm">
-              <a
-                href="mailto:hello@siwesconnect.ng"
+              
+                href="mailto:sufyaneneye752@gmail.com"
                 className="flex items-center gap-3 text-secondary-400 hover:text-white transition-colors"
               >
                 <Mail className="w-4 h-4" />
-                hello@siwesconnect.ng
+                sufyaneneye752@gmail.com
               </a>
-              <a
-                href="tel:+2348012345678"
+              
+                href="https://wa.me/2349034156446"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="flex items-center gap-3 text-secondary-400 hover:text-white transition-colors"
               >
                 <Phone className="w-4 h-4" />
-                +234 801 234 5678
+                +234 903 415 6446 (WhatsApp)
               </a>
               <p className="flex items-center gap-3 text-secondary-400">
                 <MapPin className="w-4 h-4" />
-                Lagos, Nigeria
+                Niger State, Nigeria
               </p>
             </div>
 
-            {/* Social Links */}
             <div className="flex items-center gap-3 mt-6">
               {socialLinks.map((social) => (
-                <a
+                
                   key={social.label}
                   href={social.href}
                   target="_blank"
@@ -99,16 +95,12 @@ export function Footer() {
             </div>
           </div>
 
-          {/* Links Sections */}
           <div>
             <h4 className="font-semibold text-white mb-4">Platform</h4>
             <ul className="space-y-3">
               {footerLinks.platform.map((link) => (
                 <li key={link.href}>
-                  <Link
-                    to={link.href}
-                    className="text-sm text-secondary-400 hover:text-white transition-colors"
-                  >
+                  <Link to={link.href} className="text-sm text-secondary-400 hover:text-white transition-colors">
                     {link.label}
                   </Link>
                 </li>
@@ -121,10 +113,7 @@ export function Footer() {
             <ul className="space-y-3">
               {footerLinks.resources.map((link) => (
                 <li key={link.href}>
-                  <Link
-                    to={link.href}
-                    className="text-sm text-secondary-400 hover:text-white transition-colors"
-                  >
+                  <Link to={link.href} className="text-sm text-secondary-400 hover:text-white transition-colors">
                     {link.label}
                   </Link>
                 </li>
@@ -137,10 +126,7 @@ export function Footer() {
             <ul className="space-y-3">
               {footerLinks.legal.map((link) => (
                 <li key={link.href}>
-                  <Link
-                    to={link.href}
-                    className="text-sm text-secondary-400 hover:text-white transition-colors"
-                  >
+                  <Link to={link.href} className="text-sm text-secondary-400 hover:text-white transition-colors">
                     {link.label}
                   </Link>
                 </li>
@@ -150,7 +136,6 @@ export function Footer() {
         </div>
       </div>
 
-      {/* Bottom Bar */}
       <div className="border-t border-secondary-800">
         <div className="container-app py-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
