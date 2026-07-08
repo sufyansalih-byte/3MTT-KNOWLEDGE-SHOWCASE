@@ -5,6 +5,7 @@ import type { Profile } from '../types/database';
 interface SignUpExtra {
   institution?: string;
   matric_number?: string;
+  department?: string;
   industry?: string;
   cac_number?: string;
   contact_name?: string;
@@ -159,6 +160,7 @@ const { error: orgError } = await supabase.from('organizations').insert({
         profile_id: newUserId,
         institution: extra?.institution || '',
         matric_number: extra?.matric_number || null,
+        department: extra?.department || null,
         skills: [],
       });
       if (studentError) {
