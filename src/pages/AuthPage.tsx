@@ -72,6 +72,7 @@ export function AuthPage() {
 
   const [institution, setInstitution] = useState('');
   const [matricNumber, setMatricNumber] = useState('');
+  const [fieldOfStudy, setFieldOfStudy] = useState('');
   const [industry, setIndustry] = useState('');
   const [cacNumber, setCacNumber] = useState('');
   const [contactName, setContactName] = useState('');
@@ -122,6 +123,7 @@ useEffect(() => {
 const result = await signUp(email, password, fullName, role, {
           institution,
           matric_number: matricNumber,
+          department: fieldOfStudy,
           industry,
           cac_number: cacNumber,
           contact_name: contactName,
@@ -198,7 +200,28 @@ const result = await signUp(email, password, fullName, role, {
           <form onSubmit={handleSubmit} className="space-y-4">
             {mode === 'signup' && role === 'student' && (
               <div className="space-y-4 border-l-2 border-green-600 pl-3 bg-secondary-50/50 p-3 rounded-r-xl">
-                <Input label="Full Name" type="text" placeholder="Musa Ibrahim" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
+               <Input label="Full Name" type="text" placeholder="Musa Ibrahim" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
+                <div>
+                  <label className="block text-xs font-semibold text-secondary-700 mb-1">Field of Study</label>
+                  <select
+                    required
+                    value={fieldOfStudy}
+                    onChange={(e) => setFieldOfStudy(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl border border-secondary-200 bg-white text-secondary-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                  >
+                    <option value="">Select your field</option>
+                    <option value="engineering">Engineering & Technology</option>
+                    <option value="environmental">Environmental Sciences (Architecture, Estate Mgmt, Surveying)</option>
+                    <option value="sciences">Sciences (Computer Science, Biochemistry, Microbiology, etc.)</option>
+                    <option value="agriculture">Agriculture</option>
+                    <option value="medical">Medical & Health Sciences</option>
+                    <option value="education">Education</option>
+                    <option value="arts_design">Arts & Design</option>
+                    <option value="hospitality">Hospitality & Management</option>
+                    <option value="mass_comm">Mass Communication & Media</option>
+                    <option value="veterinary">Veterinary Medicine</option>
+                  </select>
+                </div>
                 <div>
                   <label className="block text-xs font-semibold text-secondary-700 mb-1">Matriculation Number</label>
                   <input
@@ -299,11 +322,17 @@ const result = await signUp(email, password, fullName, role, {
                       onChange={(e) => setIndustry(e.target.value)}
                       className="w-full px-2.5 py-2.5 rounded-xl border border-secondary-200 bg-white text-secondary-800 text-xs focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
                     >
-                      <option value="">Select branch</option>
-                      <option value="software">Software & IT</option>
-                      <option value="mechanical">Mechanical</option>
-                      <option value="electrical">Power & Hardware</option>
-                      <option value="Civil">Civil Engineering</option>
+                      <option value="">Select sector</option>
+                      <option value="engineering">Engineering & Technology</option>
+                      <option value="environmental">Environmental Sciences</option>
+                      <option value="sciences">Sciences</option>
+                      <option value="agriculture">Agriculture</option>
+                      <option value="medical">Medical & Health Sciences</option>
+                      <option value="education">Education</option>
+                      <option value="arts_design">Arts & Design</option>
+                      <option value="hospitality">Hospitality & Management</option>
+                      <option value="mass_comm">Mass Communication & Media</option>
+                      <option value="veterinary">Veterinary Medicine</option>
                     </select>
                   </div>
                   <div>
