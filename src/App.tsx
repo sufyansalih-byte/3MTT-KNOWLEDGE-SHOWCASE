@@ -118,7 +118,132 @@ function HistoryPage() {
     </div>
   );
 }
+function PrivacyPolicyPage() {
+  return (
+    <div className="bg-gray-50 min-h-screen py-16 px-6">
+      <div className="max-w-3xl mx-auto bg-white rounded-2xl shadow-sm border p-8 space-y-6">
+        <h1 className="text-3xl font-bold text-gray-900">Privacy Policy</h1>
+        <p className="text-gray-500 text-sm">Last updated: July 2026</p>
+        <p className="text-gray-600 leading-relaxed">
+          SIWES Connect Nigeria collects only the information necessary to operate the
+          platform: your name, email, institution or organization details, and any
+          documents you choose to upload for verification purposes.
+        </p>
+        <h2 className="text-xl font-semibold text-gray-900">What We Collect</h2>
+        <p className="text-gray-600 leading-relaxed">
+          Student accounts collect full name, email, institution, matriculation number,
+          field of study, and identity verification documents (ID card, passport photo,
+          SIWES introduction letter). Organization accounts collect company name,
+          CAC registration number, contact details, and location.
+        </p>
+        <h2 className="text-xl font-semibold text-gray-900">How We Protect It</h2>
+        <p className="text-gray-600 leading-relaxed">
+          All data is stored securely using Supabase, with Row Level Security enforced
+          at the database level. Uploaded documents are stored in a private bucket and
+          are only ever accessible via short-lived, authenticated links — never public URLs.
+        </p>
+        <h2 className="text-xl font-semibold text-gray-900">Who Can See Your Data</h2>
+        <p className="text-gray-600 leading-relaxed">
+          Students' documents are only visible to organizations they have directly
+          applied to. Organization details are only visible to the public once verified
+          by an admin. No data is sold or shared with third parties.
+        </p>
+        <h2 className="text-xl font-semibold text-gray-900">Contact</h2>
+        <p className="text-gray-600 leading-relaxed">
+          Questions about this policy can be sent to{' '}
+          <a href="mailto:sufyaneneye752@gmail.com" className="text-green-600 underline">
+            sufyaneneye752@gmail.com
+          </a>.
+        </p>
+      </div>
+    </div>
+  );
+}
 
+function TermsOfServicePage() {
+  return (
+    <div className="bg-gray-50 min-h-screen py-16 px-6">
+      <div className="max-w-3xl mx-auto bg-white rounded-2xl shadow-sm border p-8 space-y-6">
+        <h1 className="text-3xl font-bold text-gray-900">Terms of Service</h1>
+        <p className="text-gray-500 text-sm">Last updated: July 2026</p>
+        <p className="text-gray-600 leading-relaxed">
+          By using SIWES Connect Nigeria, you agree to provide accurate information
+          during registration, including genuine identity documents and organizational
+          registration details.
+        </p>
+        <h2 className="text-xl font-semibold text-gray-900">Student Responsibilities</h2>
+        <p className="text-gray-600 leading-relaxed">
+          Students must upload authentic documents and use the platform solely to seek
+          genuine SIWES industrial attachment placements.
+        </p>
+        <h2 className="text-xl font-semibold text-gray-900">Organization Responsibilities</h2>
+        <p className="text-gray-600 leading-relaxed">
+          Organizations must provide accurate CAC registration details and genuinely
+          intend to host students for industrial training. Admin verification does not
+          constitute a legal guarantee of an organization's standing.
+        </p>
+        <h2 className="text-xl font-semibold text-gray-900">Platform Availability</h2>
+        <p className="text-gray-600 leading-relaxed">
+          SIWES Connect Nigeria is provided as-is, currently in active development as a
+          demonstration platform. Features may change without notice.
+        </p>
+        <h2 className="text-xl font-semibold text-gray-900">Contact</h2>
+        <p className="text-gray-600 leading-relaxed">
+          Questions can be sent to{' '}
+          <a href="mailto:sufyaneneye752@gmail.com" className="text-green-600 underline">
+            sufyaneneye752@gmail.com
+          </a>.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function CookiePolicyPage() {
+  return (
+    <div className="bg-gray-50 min-h-screen py-16 px-6">
+      <div className="max-w-3xl mx-auto bg-white rounded-2xl shadow-sm border p-8 space-y-6">
+        <h1 className="text-3xl font-bold text-gray-900">Cookie Policy</h1>
+        <p className="text-gray-500 text-sm">Last updated: July 2026</p>
+        <p className="text-gray-600 leading-relaxed">
+          SIWES Connect Nigeria uses only essential session cookies required to keep you
+          signed in securely via Supabase Authentication. We do not use tracking,
+          advertising, or third-party analytics cookies.
+        </p>
+        <h2 className="text-xl font-semibold text-gray-900">Contact</h2>
+        <p className="text-gray-600 leading-relaxed">
+          Questions can be sent to{' '}
+          <a href="mailto:sufyaneneye752@gmail.com" className="text-green-600 underline">
+            sufyaneneye752@gmail.com
+          </a>.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function FAQPage() {
+  const faqs = [
+    { q: 'Who can use SIWES Connect Nigeria?', a: 'Any Nigerian polytechnic or university student seeking a SIWES placement, and any host organization willing to take on students for industrial training.' },
+    { q: 'Is it free?', a: 'Yes, completely free for both students and organizations.' },
+    { q: 'Why do I need to upload documents before applying?', a: 'This verifies your identity as a genuine student before any organization reviews your application, protecting both sides of the platform.' },
+    { q: 'How are organizations verified?', a: 'Every organization submits CAC registration details and is manually reviewed and approved by an admin before their placements appear publicly.' },
+    { q: 'What happens after I get accepted?', a: 'Contact details are revealed on both sides so you can coordinate resumption details directly with the organization.' },
+  ];
+  return (
+    <div className="bg-gray-50 min-h-screen py-16 px-6">
+      <div className="max-w-3xl mx-auto space-y-6">
+        <h1 className="text-3xl font-bold text-gray-900 text-center mb-8">Frequently Asked Questions</h1>
+        {faqs.map((item) => (
+          <div key={item.q} className="bg-white rounded-xl border p-6">
+            <h3 className="font-semibold text-gray-900 mb-2">{item.q}</h3>
+            <p className="text-gray-600 text-sm leading-relaxed">{item.a}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 function AboutPage() {
   return (
     <div className="bg-gray-50 min-h-screen">
@@ -807,6 +932,10 @@ function App() {
             <Route path="/placements/:id" element={<PlacementDetailPage />} />
             <Route path="/history" element={<HistoryPage />} />
             <Route path="/about" element={<AboutPage />} />
+            <Route path="/privacy" element={<PrivacyPolicyPage />} />
+            <Route path="/terms" element={<TermsOfServicePage />} />
+            <Route path="/cookies" element={<CookiePolicyPage />} />
+            <Route path="/faq" element={<FAQPage />} />
           </Route>
 
           {/* Catch-all redirect */}
