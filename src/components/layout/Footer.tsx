@@ -58,14 +58,14 @@ export function Footer() {
 
             <div className="space-y-3 text-sm">
               
-                href="mailto:sufyaneneye752@gmail.com"
+               <a href="mailto:sufyaneneye752@gmail.com"
                 className="flex items-center gap-3 text-secondary-400 hover:text-white transition-colors"
               >
                 <Mail className="w-4 h-4" />
                 sufyaneneye752@gmail.com
               </a>
               
-                href="https://wa.me/2349034156446"
+              <a  href="https://wa.me/2349034156446"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-3 text-secondary-400 hover:text-white transition-colors"
@@ -83,7 +83,7 @@ export function Footer() {
               {socialLinks.map((social) => (
                 
                   key={social.label}
-                  href={social.href}
+                <a href={social.href}
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={social.label}
