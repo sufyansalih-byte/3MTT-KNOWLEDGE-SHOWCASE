@@ -7,7 +7,7 @@ export function HomePage() {
       {/* SECTION 1: HERO */}
       <section className="bg-gradient-to-br from-primary-700 to-primary-900 text-white py-20 px-6 text-center">
         <div className="inline-flex bg-white/10 border border-white/20 rounded-full text-xs px-3 py-1 mb-6">
-          🛡️ Built for 3MTT Knowledge Showcase 2025 · ITF Official Program
+          🛡️ Built for 3MTT Knowledge Showcase 2026 · ITF Official Program
         </div>
 
         <h1 className="font-heading text-4xl sm:text-5xl font-extrabold leading-tight max-w-3xl mx-auto">
