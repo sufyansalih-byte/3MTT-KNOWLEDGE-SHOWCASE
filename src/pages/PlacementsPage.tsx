@@ -14,11 +14,17 @@ import { supabase } from '../lib/supabase';
 import type { Placement } from '../types/database';
 
 const industries = [
-  { value: 'All', label: 'All Industries' },
-  { value: 'software', label: 'Software & IT' },
-  { value: 'mechanical', label: 'Mechanical' },
-  { value: 'electrical', label: 'Power & Hardware' },
-  { value: 'Civil', label: 'Civil Engineering' },
+  { value: 'All', label: 'All Fields' },
+  { value: 'engineering', label: 'Engineering & Technology' },
+  { value: 'environmental', label: 'Environmental Sciences' },
+  { value: 'sciences', label: 'Sciences' },
+  { value: 'agriculture', label: 'Agriculture' },
+  { value: 'medical', label: 'Medical & Health Sciences' },
+  { value: 'education', label: 'Education' },
+  { value: 'arts_design', label: 'Arts & Design' },
+  { value: 'hospitality', label: 'Hospitality & Management' },
+  { value: 'mass_comm', label: 'Mass Communication & Media' },
+  { value: 'veterinary', label: 'Veterinary Medicine' },
 ];
 
 const states = [
