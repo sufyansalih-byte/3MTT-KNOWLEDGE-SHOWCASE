@@ -844,6 +844,7 @@ function PlacementDetailPage() {
   const [coverNote, setCoverNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [studentDepartment, setStudentDepartment] = useState('');  // ADD THIS
   const [documentsCount, setDocumentsCount] = useState<number | null>(null);
 
   useEffect(() => {
@@ -859,11 +860,12 @@ const { data } = await supabase
       if (user && profile?.role === 'student') {
         const { data: stuRow } = await supabase
           .from('students')
-          .select('id')
+          .select('id, department')
           .eq('profile_id', user.id)
           .maybeSingle();
         if (stuRow) {
           setStudentId(stuRow.id);
+          setStudentDepartment(stuRow.department ?? '');
 
           const { data: docRow } = await supabase
             .from('student_documents')
@@ -904,6 +906,13 @@ const { data } = await supabase
   };
 
   const canApply = documentsCount !== null && documentsCount >= 3;
+
+  const departmentMismatch = (() => {
+  if (!studentDepartment || !placement?.department) return false;
+  const stuDept = studentDepartment.toLowerCase();
+  const placeDept = placement.department.toLowerCase();
+  return !stuDept.includes(placeDept) && !placeDept.includes(stuDept);
+})();
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-secondary-50">
