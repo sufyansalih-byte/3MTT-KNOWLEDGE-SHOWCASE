@@ -66,7 +66,7 @@ const NIGERIA_STATES: { state: string; cities: string[] }[] = [
   { state: 'Zamfara', cities: ['Gusau', 'Kaura Namoda', 'Talata Mafara', 'Anka'] },
 ];
 
-type TabType = 'overview' | 'applications' | 'placements';
+type TabType = 'overview' | 'applications' | 'placements' | 'profile';
 type ApplicationStatus = 'pending' | 'accepted' | 'rejected';
 
 interface ApplicantDocument {
@@ -156,6 +156,14 @@ export function OrganizationDashboardPage() {
 
   const availableCities = NIGERIA_STATES.find((s) => s.state === formState)?.cities ?? [];
 
+  // Edit Profile state
+  const [profileDescription, setProfileDescription] = useState('');
+  const [profileWebsite, setProfileWebsite] = useState('');
+  const [profileAddress, setProfileAddress] = useState('');
+  const [profileContactName, setProfileContactName] = useState('');
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileSaved, setProfileSaved] = useState(false);
+
   // Auth guard
   useEffect(() => {
     if (authLoading) return;
@@ -181,6 +189,39 @@ export function OrganizationDashboardPage() {
     setOrgId(orgRow.id);
     setIsVerified(orgRow.is_verified);
 
+    const { data: fullOrgRow } = await supabase
+      .from('organizations')
+      .select('description, website, address, contact_name')
+      .eq('id', orgRow.id)
+      .maybeSingle();
+    if (fullOrgRow) {
+      setProfileDescription(fullOrgRow.description || '');
+      setProfileWebsite(fullOrgRow.website || '');
+      setProfileAddress(fullOrgRow.address || '');
+      setProfileContactName(fullOrgRow.contact_name || '');
+    }
+
+    const handleSaveProfile = async () => {
+    if (!orgId) return;
+    setSavingProfile(true);
+    setProfileSaved(false);
+    const { error } = await supabase
+      .from('organizations')
+      .update({
+        description: profileDescription || null,
+        website: profileWebsite || null,
+        address: profileAddress || null,
+        contact_name: profileContactName || null,
+      })
+      .eq('id', orgId);
+    setSavingProfile(false);
+    if (!error) {
+      setProfileSaved(true);
+      setTimeout(() => setProfileSaved(false), 3000);
+    }
+  };
+
+  const handleCreatePlacement = async () => {
     const { data: placementsData } = await supabase
       .from('placements')
       .select('id, title, department, slots_available, is_active, deadline')
@@ -427,7 +468,7 @@ const { data: docs } = await supabase
               </span>
             )}
           </button>
-          <button
+         <button
             onClick={() => setActiveTab('placements')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
               activeTab === 'placements' ? 'bg-primary-600 text-white' : 'bg-secondary-100 text-secondary-600'
@@ -435,6 +476,15 @@ const { data: docs } = await supabase
           >
             <Briefcase className="w-4 h-4" />
             Placements
+          </button>
+          <button
+            onClick={() => setActiveTab('profile')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
+              activeTab === 'profile' ? 'bg-primary-600 text-white' : 'bg-secondary-100 text-secondary-600'
+            }`}
+          >
+            <Building2 className="w-4 h-4" />
+            Edit Profile
           </button>
         </div>
       </div>
@@ -531,6 +581,16 @@ const { data: docs } = await supabase
             }`}
           >
             Manage Placements
+          </button>
+          <button
+            onClick={() => setActiveTab('profile')}
+            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium rounded-t-xl transition-all border-b-2 -mb-[1px] ${
+              activeTab === 'profile'
+                ? 'text-primary-700 border-primary-600 bg-primary-50'
+                : 'text-secondary-500 border-transparent hover:text-secondary-700'
+            }`}
+          >
+            Edit Profile
           </button>
         </div>
 
@@ -810,6 +870,64 @@ const { data: docs } = await supabase
               )}
             </div>
           </div>
+        )}
+
+       {/* Edit Profile Tab */}
+        {activeTab === 'profile' && (
+          <Card>
+            <CardBody className="p-4 lg:p-6 max-w-xl">
+              <h2 className="font-semibold text-lg text-secondary-900 mb-4">Edit Organization Profile</h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-secondary-700 mb-1">Company Description</label>
+                  <textarea
+                    rows={4}
+                    value={profileDescription}
+                    onChange={(e) => setProfileDescription(e.target.value)}
+                    placeholder="Briefly describe what your organization does and what trainees can expect to learn."
+                    className="w-full px-3 py-2.5 rounded-xl border border-secondary-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-secondary-700 mb-1">Website</label>
+                  <input
+                    type="text"
+                    value={profileWebsite}
+                    onChange={(e) => setProfileWebsite(e.target.value)}
+                    placeholder="https://yourcompany.com"
+                    className="w-full px-3 py-2.5 rounded-xl border border-secondary-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-secondary-700 mb-1">Street Address</label>
+                  <input
+                    type="text"
+                    value={profileAddress}
+                    onChange={(e) => setProfileAddress(e.target.value)}
+                    placeholder="e.g. 15 Industrial Layout Road"
+                    className="w-full px-3 py-2.5 rounded-xl border border-secondary-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-secondary-700 mb-1">HR Representative / Contact Name</label>
+                  <input
+                    type="text"
+                    value={profileContactName}
+                    onChange={(e) => setProfileContactName(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl border border-secondary-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                  />
+                </div>
+                <div className="flex items-center gap-3 pt-2">
+                  <Button onClick={handleSaveProfile} disabled={savingProfile}>
+                    {savingProfile ? 'Saving...' : 'Save Changes'}
+                  </Button>
+                  {profileSaved && (
+                    <span className="text-success-600 text-sm font-medium">Saved!</span>
+                  )}
+                </div>
+              </div>
+            </CardBody>
+          </Card>
         )}
 
         {/* Placements Tab */}
