@@ -118,6 +118,81 @@ function HistoryPage() {
     </div>
   );
 }
+
+function ResetPasswordPage() {
+  const navigate = useNavigate();
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const handleReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+    setLoading(true);
+    const { error: updateError } = await supabase.auth.updateUser({ password });
+    setLoading(false);
+    if (updateError) {
+      setError(updateError.message);
+    } else {
+      setSuccess(true);
+      setTimeout(() => navigate('/auth/signin'), 2500);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-secondary-50 px-4">
+      <div className="max-w-md w-full bg-white p-8 rounded-2xl border border-secondary-200 shadow-sm">
+        <h1 className="font-heading text-xl font-bold text-secondary-900 mb-2">Set a New Password</h1>
+        {success ? (
+          <p className="text-success-700 text-sm">Password updated! Redirecting to sign in...</p>
+        ) : (
+          <form onSubmit={handleReset} className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-secondary-700 mb-1">New Password</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={6}
+                className="w-full px-3 py-2.5 rounded-xl border border-secondary-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-secondary-700 mb-1">Confirm Password</label>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                minLength={6}
+                className="w-full px-3 py-2.5 rounded-xl border border-secondary-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+              />
+            </div>
+            {error && <p className="text-error-600 text-sm">{error}</p>}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 bg-primary-600 hover:bg-primary-700 text-white font-bold rounded-xl text-sm disabled:opacity-50"
+            >
+              {loading ? 'Updating...' : 'Update Password'}
+            </button>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
 function PrivacyPolicyPage() {
   return (
     <div className="bg-gray-50 min-h-screen py-16 px-6">
@@ -918,6 +993,7 @@ function App() {
           <Route path="/auth/signup" element={<AuthPage />} />
           <Route path="/auth/signin" element={<AuthPage />} />
           <Route path="/auth/:mode" element={<AuthPage />} />
+          <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
 
           {/* Dashboard routes - protected layout */}
           <Route path="/dashboard" element={<DashboardPage />} />
