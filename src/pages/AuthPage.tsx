@@ -245,6 +245,27 @@ const result = await signUp(email, password, fullName, role, {
                     className="w-full px-3 py-2.5 rounded-xl border border-secondary-200 bg-white text-secondary-800 placeholder-secondary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 text-sm transition-all"
                   />
                 </div>
+                {/* Add this after the institution input, still inside the student signup block */}
+              <div>
+                <label className="block text-xs font-semibold text-secondary-700 mb-1">
+                  State of Institution
+                </label>
+                <select
+                  value={state}
+                  onChange={(e) => setState(e.target.value)}
+                  required
+                  className="w-full px-3 py-2.5 rounded-xl border border-secondary-200 
+                    bg-white text-secondary-800 text-sm focus:outline-none 
+                    focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                >
+                  <option value="">Select state</option>
+                  {NIGERIA_STATES.map((s) => (
+                    <option key={s.state} value={s.state}>
+                      {s.state}
+                    </option>
+                  ))}
+                </select>
+              </div>
               </div>
             )}
 
