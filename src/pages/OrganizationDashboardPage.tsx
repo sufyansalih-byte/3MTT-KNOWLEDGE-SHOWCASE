@@ -173,100 +173,121 @@ export function OrganizationDashboardPage() {
 
   // Data fetching
   const fetchData = useCallback(async () => {
-    if (!user) return;
-    setLoading(true);
+  if (!user) return;
+  setLoading(true);
 
-    const { data: orgRow } = await supabase
-      .from('organizations')
-      .select('id, is_verified')
-      .eq('profile_id', user.id)
-      .maybeSingle();
+  const { data: orgRow } = await supabase
+    .from('organizations')
+    .select('id, is_verified')
+    .eq('profile_id', user.id)
+    .maybeSingle();
 
-    if (!orgRow) {
-      setLoading(false);
-      return;
-    }
-    setOrgId(orgRow.id);
-    setIsVerified(orgRow.is_verified);
-
-    const { data: fullOrgRow } = await supabase
-      .from('organizations')
-      .select('description, website, address, contact_name')
-      .eq('id', orgRow.id)
-      .maybeSingle();
-    if (fullOrgRow) {
-      setProfileDescription(fullOrgRow.description || '');
-      setProfileWebsite(fullOrgRow.website || '');
-      setProfileAddress(fullOrgRow.address || '');
-      setProfileContactName(fullOrgRow.contact_name || '');
-    }
-
-    const handleSaveProfile = async () => {
-    if (!orgId) return;
-    setSavingProfile(true);
-    setProfileSaved(false);
-    const { error } = await supabase
-      .from('organizations')
-      .update({
-        description: profileDescription || null,
-        website: profileWebsite || null,
-        address: profileAddress || null,
-        contact_name: profileContactName || null,
-      })
-      .eq('id', orgId);
-    setSavingProfile(false);
-    if (!error) {
-      setProfileSaved(true);
-      setTimeout(() => setProfileSaved(false), 3000);
-    }
-  };
-
-  const handleCreatePlacement = async () => {
-    const { data: placementsData } = await supabase
-      .from('placements')
-      .select('id, title, department, slots_available, is_active, deadline')
-      .eq('organization_id', orgRow.id)
-      .order('created_at', { ascending: false });
-    setPlacements(placementsData ?? []);
-
-    const ids = (placementsData ?? []).map((p: any) => p.id);
-    if (ids.length > 0) {
-      const { data: appsData } = await supabase
-        .from('applications')
-        .select(
-          `id, status, cover_letter, created_at, placement_id, placements ( title ), students ( id, institution, department, level, matric_number, profiles ( full_name, email ) )`
-        )
-        .in('placement_id', ids)
-        .order('created_at', { ascending: false });
-
-      const shaped: Applicant[] = (appsData ?? []).map((row: any) => ({
-        id: row.students?.id ?? row.id,
-        application_id: row.id,
-        name: row.students?.profiles?.full_name ?? 'Unknown Student',
-        email: row.students?.profiles?.email ?? '',
-        institution: row.students?.institution ?? '',
-        department: row.students?.department ?? '',
-        level: row.students?.level ?? '',
-        matric_number: row.students?.matric_number ?? '',
-        application_date: row.created_at,
-        placement_title: row.placements?.title ?? '',
-        status: row.status,
-        cover_letter: row.cover_letter ?? '',
-        documents: [],
-      }));
-      setApplicants(shaped);
-    }
+  if (!orgRow) {
     setLoading(false);
-  }, [user]);
+    return;
+  }
 
-  useEffect(() => {
-    if (user) fetchData();
-  }, [user, fetchData]);
+  setOrgId(orgRow.id);
+  setIsVerified(orgRow.is_verified);
 
-  useEffect(() => {
-    if (user) fetchNotifications();
-  }, [user, fetchNotifications]);
+  const { data: fullOrgRow } = await supabase
+    .from('organizations')
+    .select('description, website, address, contact_name')
+    .eq('id', orgRow.id)
+    .maybeSingle();
 
+  if (fullOrgRow) {
+    setProfileDescription(fullOrgRow.description || '');
+    setProfileWebsite(fullOrgRow.website || '');
+    setProfileAddress(fullOrgRow.address || '');
+    setProfileContactName(fullOrgRow.contact_name || '');
+  }
+
+  const { data: placementsData } = await supabase
+    .from('placements')
+    .select('id, title, department, slots_available, is_active, deadline')
+    .eq('organization_id', orgRow.id)
+    .order('created_at', { ascending: false });
+
+  setPlacements(placementsData ?? []);
+
+  const ids = (placementsData ?? []).map((p: any) => p.id);
+
+  if (ids.length > 0) {
+    const { data: appsData } = await supabase
+      .from('applications')
+      .select(`
+        id,
+        status,
+        cover_letter,
+        created_at,
+        placement_id,
+        placements(title),
+        students(
+          id,
+          institution,
+          department,
+          level,
+          matric_number,
+          profiles(full_name, email)
+        )
+      `)
+      .in('placement_id', ids)
+      .order('created_at', { ascending: false });
+
+    const shaped: Applicant[] = (appsData ?? []).map((row: any) => ({
+      id: row.students?.id ?? row.id,
+      application_id: row.id,
+      name: row.students?.profiles?.full_name ?? 'Unknown Student',
+      email: row.students?.profiles?.email ?? '',
+      institution: row.students?.institution ?? '',
+      department: row.students?.department ?? '',
+      level: row.students?.level ?? '',
+      matric_number: row.students?.matric_number ?? '',
+      application_date: row.created_at,
+      placement_title: row.placements?.title ?? '',
+      status: row.status,
+      cover_letter: row.cover_letter ?? '',
+      documents: [],
+    }));
+
+    setApplicants(shaped);
+  }
+
+  setLoading(false);
+}, [user]);
+
+const handleSaveProfile = async () => {
+  if (!orgId) return;
+
+  setSavingProfile(true);
+  setProfileSaved(false);
+
+  const { error } = await supabase
+    .from('organizations')
+    .update({
+      description: profileDescription || null,
+      website: profileWebsite || null,
+      address: profileAddress || null,
+      contact_name: profileContactName || null,
+    })
+    .eq('id', orgId);
+
+  setSavingProfile(false);
+
+  if (!error) {
+    setProfileSaved(true);
+    setTimeout(() => setProfileSaved(false), 3000);
+  }
+};
+
+useEffect(() => {
+  if (user) fetchData();
+}, [user, fetchData]);
+
+useEffect(() => {
+  if (user) fetchNotifications();
+}, [user, fetchNotifications]);
   // Handlers
   const handleLogout = async () => {
     await signOut();
