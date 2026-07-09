@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { GraduationCap, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import { Button, Input } from '../components/ui';
 import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabase';
 
 type AuthMode = 'signin' | 'signup';
 
@@ -414,13 +415,36 @@ const result = await signUp(email, password, fullName, role, {
             </Button>
           </form>
 
-          <div className="mt-5 text-center text-xs sm:text-sm">
+          <div className="mt-5 text-center text-xs sm:text-sm space-y-2">
             <p className="text-secondary-500">
               {mode === 'signin' ? "Don't have an account?" : 'Already have an account?'}{' '}
               <button type="button" onClick={toggleMode} className="text-primary-600 hover:text-primary-700 font-bold ml-0.5">
                 {mode === 'signin' ? 'Sign up' : 'Sign in'}
               </button>
             </p>
+            {mode === 'signin' && (
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!email) {
+                    setError('Enter your email above first, then click "Forgot password?" again.');
+                    return;
+                  }
+                  const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+                    redirectTo: `${window.location.origin}/auth/reset-password`,
+                  });
+                  if (resetError) {
+                    setError(resetError.message);
+                  } else {
+                    setError(null);
+                    alert('Password reset link sent! Check your email.');
+                  }
+                }}
+                className="text-secondary-400 hover:text-primary-600 underline"
+              >
+                Forgot password?
+              </button>
+            )}
           </div>
         </div>
       </div>
