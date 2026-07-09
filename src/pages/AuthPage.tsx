@@ -73,6 +73,7 @@ export function AuthPage() {
 
   const [institution, setInstitution] = useState('');
   const [matricNumber, setMatricNumber] = useState('');
+  const [department, setDepartment] = useState('');
   const [fieldOfStudy, setFieldOfStudy] = useState('');
   const [industry, setIndustry] = useState('');
   const [cacNumber, setCacNumber] = useState('');
