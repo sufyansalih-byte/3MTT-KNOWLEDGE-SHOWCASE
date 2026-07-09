@@ -482,6 +482,34 @@ function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [stats, setStats] = useState<{
+    statusCounts: Record<string, number>;
+    industryCounts: Record<string, number>;
+    totalStudents: number;
+  }>({ statusCounts: {}, industryCounts: {}, totalStudents: 0 });
+
+  const fetchStats = async () => {
+    const { data: apps } = await supabase.from('applications').select('status');
+    const statusCounts: Record<string, number> = {};
+    (apps ?? []).forEach((a: any) => {
+      statusCounts[a.status] = (statusCounts[a.status] || 0) + 1;
+    });
+
+    const { data: orgsData } = await supabase.from('organizations').select('industry').eq('is_verified', true);
+    const industryCounts: Record<string, number> = {};
+    (orgsData ?? []).forEach((o: any) => {
+      const key = o.industry || 'Unspecified';
+      industryCounts[key] = (industryCounts[key] || 0) + 1;
+    });
+
+    const { count: studentCount } = await supabase.from('students').select('*', { count: 'exact', head: true });
+
+    setStats({ statusCounts, industryCounts, totalStudents: studentCount ?? 0 });
+  };
+
+  useEffect(() => {
+    if (profile?.role === 'admin') fetchStats();
+  }, [profile]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -661,6 +689,55 @@ const handleApprove = async (id: string, approve: boolean) => {
           </div>
         )}
 
+
+        <div className="mb-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-white rounded-xl border border-secondary-200 p-6">
+            <h3 className="font-semibold text-sm text-secondary-900 mb-4">Applications by Status</h3>
+            <div className="space-y-3">
+              {['pending', 'accepted', 'rejected'].map((status) => {
+                const count = stats.statusCounts[status] || 0;
+                const total = Object.values(stats.statusCounts).reduce((a, b) => a + b, 0) || 1;
+                const pct = Math.round((count / total) * 100);
+                const color = status === 'accepted' ? 'bg-success-500' : status === 'rejected' ? 'bg-error-500' : 'bg-warning-500';
+                return (
+                  <div key={status}>
+                    <div className="flex justify-between text-xs text-secondary-600 mb-1 capitalize">
+                      <span>{status}</span>
+                      <span>{count} ({pct}%)</span>
+                    </div>
+                    <div className="w-full h-3 bg-secondary-100 rounded-full overflow-hidden">
+                      <div className={`h-full ${color} rounded-full transition-all`} style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl border border-secondary-200 p-6">
+            <h3 className="font-semibold text-sm text-secondary-900 mb-4">Verified Organizations by Field</h3>
+            <div className="space-y-3">
+              {Object.entries(stats.industryCounts).map(([industry, count]) => {
+                const total = Object.values(stats.industryCounts).reduce((a, b) => a + b, 0) || 1;
+                const pct = Math.round((count / total) * 100);
+                return (
+                  <div key={industry}>
+                    <div className="flex justify-between text-xs text-secondary-600 mb-1 capitalize">
+                      <span>{industry.replace('_', ' ')}</span>
+                      <span>{count} ({pct}%)</span>
+                    </div>
+                    <div className="w-full h-3 bg-secondary-100 rounded-full overflow-hidden">
+                      <div className="h-full bg-primary-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+              {Object.keys(stats.industryCounts).length === 0 && (
+                <p className="text-xs text-secondary-400">No verified organizations yet.</p>
+              )}
+            </div>
+          </div>
+        </div>
         <div className="mb-8 bg-white rounded-xl border border-secondary-200 p-4">
           <h2 className="font-semibold text-sm text-secondary-900 mb-3">Export Data for Analysis</h2>
           <div className="flex flex-wrap gap-2">
