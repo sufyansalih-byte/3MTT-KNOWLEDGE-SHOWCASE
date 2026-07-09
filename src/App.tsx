@@ -911,7 +911,65 @@ const { data } = await supabase
   if (!studentDepartment || !placement?.department) return false;
   const stuDept = studentDepartment.toLowerCase();
   const placeDept = placement.department.toLowerCase();
-  return !stuDept.includes(placeDept) && !placeDept.includes(stuDept);
+
+  // Direct inclusion still covers partial matches
+  if (stuDept.includes(placeDept) || placeDept.includes(stuDept)) return false;
+
+  // Broad category → keywords that org placement departments might use
+  const categoryMap: Record<string, string[]> = {
+    'engineering and technology': [
+      'engineering', 'technology', 'software', 'mechanical',
+      'civil', 'electrical', 'power', 'hardware', 'it',
+      'computer', 'technical', 'systems', 'ict', 'telecoms',
+      'construction', 'structural', 'industrial',
+    ],
+    'environmental science': [
+      'environmental', 'ecology', 'geography', 'earth',
+      'climate', 'conservation', 'natural resources',
+      'water', 'surveying', 'geoscience', 'urban',
+    ],
+    'science': [
+      'science', 'physics', 'chemistry', 'biology',
+      'mathematics', 'math', 'statistics', 'laboratory',
+      'biochemistry', 'microbiology', 'research',
+    ],
+    'agriculture': [
+      'agriculture', 'farming', 'agronomy', 'veterinary',
+      'food', 'crop', 'livestock', 'fishery', 'forestry',
+      'horticulture', 'rural',
+    ],
+    'business and management': [
+      'business', 'management', 'administration', 'accounting',
+      'finance', 'economics', 'commerce', 'marketing',
+      'procurement', 'logistics', 'supply chain', 'audit',
+    ],
+    'health sciences': [
+      'health', 'medical', 'nursing', 'pharmacy',
+      'medicine', 'clinical', 'hospital', 'public health',
+      'nutrition', 'radiography',
+    ],
+    'education': [
+      'education', 'teaching', 'school', 'training',
+      'curriculum', 'library',
+    ],
+    'arts and social sciences': [
+      'arts', 'social', 'humanities', 'law', 'political',
+      'sociology', 'psychology', 'communication',
+      'media', 'journalism', 'public relations', 'mass comm',
+    ],
+  };
+
+  for (const [category, keywords] of Object.entries(categoryMap)) {
+    const studentMatchesCategory =
+      stuDept.includes(category) || category.includes(stuDept);
+    if (studentMatchesCategory) {
+      const placementFitsCategory = keywords.some((kw) =>
+        placeDept.includes(kw)
+      );
+      if (placementFitsCategory) return false;
+    }
+  }
+  return true;
 })();
 
   if (loading) return (
@@ -1027,11 +1085,33 @@ const { data } = await supabase
             </div>
           )}
           {user && profile?.role === 'student' && !alreadyApplied && canApply && (
-            <div className="text-center">
-              <p className="text-secondary-600 text-sm mb-4">This placement is open. Click below to submit your application.</p>
-              <button onClick={() => setShowModal(true)} className="px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white font-bold rounded-xl text-sm">Apply for Attachment</button>
-            </div>
-          )}
+  <div className="text-center">
+    {departmentMismatch && (
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4 text-left">
+        <p className="font-semibold text-amber-800 text-sm mb-1">
+          ⚠️ Field Mismatch Notice
+        </p>
+        <p className="text-amber-700 text-xs leading-relaxed">
+          This placement is listed under{' '}
+          <strong>{placement.department}</strong>, but your
+          registered field is{' '}
+          <strong>{studentDepartment}</strong>. You can still
+          apply — but confirm with the organization that they
+          accept students from your field before resumption.
+        </p>
+      </div>
+    )}
+    <p className="text-secondary-600 text-sm mb-4">
+      This placement is open. Click below to submit your application.
+    </p>
+    <button
+      onClick={() => setShowModal(true)}
+      className="px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white font-bold rounded-xl text-sm"
+    >
+      Apply for Attachment
+    </button>
+  </div>
+)}
           {submitted && (
             <div className="text-center text-success-700 font-semibold">
               ✅ Application submitted! Check your student dashboard to track its status.
