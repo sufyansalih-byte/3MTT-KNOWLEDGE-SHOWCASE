@@ -161,6 +161,7 @@ const { error: orgError } = await supabase.from('organizations').insert({
         institution: extra?.institution || '',
         matric_number: extra?.matric_number || null,
         department: extra?.department || null,
+        state: extra?.state || null,
         skills: [],
       });
       if (studentError) {
