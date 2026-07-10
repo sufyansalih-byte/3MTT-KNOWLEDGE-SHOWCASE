@@ -27,7 +27,7 @@ import { Button, Card, CardBody, Badge, EmptyState } from '../components/ui';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 
-type TabType = 'overview' | 'applications' | 'logbook' | 'cv';
+type TabType = 'overview' | 'applications' | 'logbook' | 'cv' | 'profile';
 
 interface RealApplication {
   id: string;
@@ -90,6 +90,16 @@ export function StudentDashboardPage() {
   }
   const [notifications, setNotifications] = useState<NotificationRow[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
+
+  const [editFullName, setEditFullName] = useState('');
+  const [editDepartment, setEditDepartment] = useState('');
+  const [editLevel, setEditLevel] = useState('');
+  const [editState, setEditState] = useState('');
+  const [editGraduationYear, setEditGraduationYear] = useState('');
+  const [lockedInstitution, setLockedInstitution] = useState('');
+  const [lockedMatric, setLockedMatric] = useState('');
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileSaved, setProfileSaved] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -238,6 +248,27 @@ export function StudentDashboardPage() {
     if (user) fetchNotifications();
   }, [user, fetchNotifications]);
 
+  useEffect(() => {
+    if (activeTab !== 'profile' || !user) return;
+    const loadProfileData = async () => {
+      const { data } = await supabase
+        .from('students')
+        .select('institution, department, level, matric_number, state, graduation_year')
+        .eq('profile_id', user.id)
+        .maybeSingle();
+      if (data) {
+        setLockedInstitution(data.institution || '');
+        setLockedMatric(data.matric_number || '');
+        setEditDepartment(data.department || '');
+        setEditLevel(data.level || '');
+        setEditState(data.state || '');
+        setEditGraduationYear(data.graduation_year ? String(data.graduation_year) : '');
+      }
+      setEditFullName(profile?.full_name || '');
+    };
+    loadProfileData();
+  }, [activeTab, user, profile]);
+
   const handleDocumentUpload = async (documentType: 'id_card' | 'passport_photo' | 'siwes_letter', file: File) => {
     if (!studentId) return;
 
@@ -282,6 +313,28 @@ export function StudentDashboardPage() {
     }
   };
 
+  const handleProfileSave = async () => {
+    if (!user) return;
+    setProfileSaving(true);
+    setProfileSaved(false);
+
+    await supabase.from('profiles').update({ full_name: editFullName }).eq('id', user.id);
+
+    await supabase
+      .from('students')
+      .update({
+        department: editDepartment || null,
+        level: editLevel || null,
+        state: editState || null,
+        graduation_year: editGraduationYear ? parseInt(editGraduationYear) : null,
+      })
+      .eq('profile_id', user.id);
+
+    setProfileSaving(false);
+    setProfileSaved(true);
+    setTimeout(() => setProfileSaved(false), 3000);
+  };
+  
   const handleLogoutAction = async () => {
     await signOut();
     window.location.href = '/';
@@ -411,12 +464,13 @@ export function StudentDashboardPage() {
           </div>
         </div>
 
-        <div className="flex overflow-x-auto px-4 pb-2 gap-2 scrollbar-hide">
-          {[
+        <div>
+        {[
             { id: 'overview', label: 'Overview', icon: TrendingUp },
             { id: 'applications', label: 'Applications', icon: Briefcase },
             { id: 'logbook', label: 'SIWES Logbook', icon: BookOpen },
             { id: 'cv', label: 'Upload Documents', icon: FileText },
+            { id: 'profile', label: 'Edit Profile', icon: User },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -486,6 +540,7 @@ export function StudentDashboardPage() {
             { id: 'applications', label: 'Applications', icon: Briefcase },
             { id: 'logbook', label: 'SIWES Logbook', icon: BookOpen },
             { id: 'cv', label: 'Upload Documents', icon: FileText, badge: documents.length < 3 },
+            { id: 'profile', label: 'Edit Profile', icon: User },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -729,6 +784,140 @@ export function StudentDashboardPage() {
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {activeTab === 'profile' && (
+          <div className="max-w-xl mx-auto space-y-6 py-4">
+            <div>
+              <h2 className="font-heading font-bold text-xl text-secondary-900">Edit Your Profile</h2>
+              <p className="text-sm text-secondary-500 mt-1">Keep your details up to date so organizations see accurate information.</p>
+            </div>
+
+            <Card>
+              <CardBody className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-secondary-700 mb-1">Full Name</label>
+                  <input
+                    type="text"
+                    value={editFullName}
+                    onChange={(e) => setEditFullName(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl border border-secondary-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-secondary-700 mb-1">Institution</label>
+                  <input
+                    type="text"
+                    value={lockedInstitution}
+                    disabled
+                    className="w-full px-3 py-2.5 rounded-xl border border-secondary-200 bg-secondary-100 text-secondary-500 text-sm cursor-not-allowed"
+                  />
+                  <p className="text-[11px] text-secondary-400 mt-1">
+                    To correct your institution, contact support at{' '}
+                    <a href="mailto:sufyaneneye752@gmail.com" className="underline">sufyaneneye752@gmail.com</a>
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-secondary-700 mb-1">Matriculation Number</label>
+                  <input
+                    type="text"
+                    value={lockedMatric}
+                    disabled
+                    className="w-full px-3 py-2.5 rounded-xl border border-secondary-200 bg-secondary-100 text-secondary-500 text-sm cursor-not-allowed"
+                  />
+                  <p className="text-[11px] text-secondary-400 mt-1">
+                    To correct your matriculation number, contact support at{' '}
+                    <a href="mailto:sufyaneneye752@gmail.com" className="underline">sufyaneneye752@gmail.com</a>
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-secondary-700 mb-1">Field of Study</label>
+                  <select
+                    value={editDepartment}
+                    onChange={(e) => setEditDepartment(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl border border-secondary-200 bg-white text-secondary-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                  >
+                    <option value="">Select your field</option>
+                    <option value="engineering">Engineering & Technology</option>
+                    <option value="environmental">Environmental Sciences</option>
+                    <option value="sciences">Sciences</option>
+                    <option value="agriculture">Agriculture</option>
+                    <option value="medical">Medical & Health Sciences</option>
+                    <option value="education">Education</option>
+                    <option value="arts_design">Arts & Design</option>
+                    <option value="hospitality">Hospitality & Management</option>
+                    <option value="mass_comm">Mass Communication & Media</option>
+                    <option value="veterinary">Veterinary Medicine</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-secondary-700 mb-1">Academic Level</label>
+                  <select
+                    value={editLevel}
+                    onChange={(e) => setEditLevel(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl border border-secondary-200 bg-white text-secondary-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                  >
+                    <option value="">Select level</option>
+                    <option value="ND1">ND 1</option>
+                    <option value="ND2">ND 2</option>
+                    <option value="HND1">HND 1</option>
+                    <option value="HND2">HND 2</option>
+                    <option value="100">100 Level</option>
+                    <option value="200">200 Level</option>
+                    <option value="300">300 Level</option>
+                    <option value="400">400 Level</option>
+                    <option value="500">500 Level</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-secondary-700 mb-1">State of Institution</label>
+                  <select
+                    value={editState}
+                    onChange={(e) => setEditState(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl border border-secondary-200 bg-white text-secondary-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                  >
+                    <option value="">Select state</option>
+                    {['Abia','Adamawa','Akwa Ibom','Anambra','Bauchi','Bayelsa','Benue','Borno','Cross River','Delta','Ebonyi','Edo','Ekiti','Enugu','FCT (Abuja)','Gombe','Imo','Jigawa','Kaduna','Kano','Katsina','Kebbi','Kogi','Kwara','Lagos','Nasarawa','Niger','Ogun','Ondo','Osun','Oyo','Plateau','Rivers','Sokoto','Taraba','Yobe','Zamfara'].map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-secondary-700 mb-1">Expected Graduation Year</label>
+                  <select
+                    value={editGraduationYear}
+                    onChange={(e) => setEditGraduationYear(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl border border-secondary-200 bg-white text-secondary-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                  >
+                    <option value="">Select year</option>
+                    {[2026, 2027, 2028, 2029, 2030].map((y) => (
+                      <option key={y} value={y}>{y}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {profileSaved && (
+                  <div className="p-3 rounded-xl bg-success-50 border border-success-200">
+                    <p className="text-xs text-success-700 font-medium">✅ Profile updated successfully.</p>
+                  </div>
+                )}
+
+                <button
+                  onClick={handleProfileSave}
+                  disabled={profileSaving}
+                  className="w-full py-3 bg-primary-600 hover:bg-primary-700 text-white font-bold rounded-xl text-sm disabled:opacity-50"
+                >
+                  {profileSaving ? 'Saving...' : 'Save Changes'}
+                </button>
+              </CardBody>
+            </Card>
           </div>
         )}
 
