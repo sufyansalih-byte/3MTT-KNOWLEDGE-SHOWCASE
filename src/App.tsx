@@ -568,8 +568,50 @@ const handleApprove = async (id: string, approve: boolean) => {
     setUpdatingId(null);
   };
 
-  const [exporting, setExporting] = useState<string | null>(null);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetting, setResetting] = useState(false);
+  const [resetMessage, setResetMessage] = useState<string | null>(null);
 
+  const handleResetStudentLimit = async () => {
+    if (!resetEmail) return;
+    setResetting(true);
+    setResetMessage(null);
+
+    const { data: profileRow } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('email', resetEmail.toLowerCase())
+      .eq('role', 'student')
+      .maybeSingle();
+
+    if (!profileRow) {
+      setResetMessage('No student found with that email.');
+      setResetting(false);
+      return;
+    }
+
+    const { data: studentRow } = await supabase
+      .from('students')
+      .select('id')
+      .eq('profile_id', profileRow.id)
+      .maybeSingle();
+
+    if (!studentRow) {
+      setResetMessage('Student record not found.');
+      setResetting(false);
+      return;
+    }
+
+    const { error } = await supabase.rpc('admin_reset_student_edit_count', {
+      target_student_id: studentRow.id,
+    });
+
+    setResetting(false);
+    setResetMessage(error ? `Failed: ${error.message}` : 'Edit limit reset successfully.');
+    setResetEmail('');
+  };
+  
+  const [exporting, setExporting] = useState<string | null>(null);
   const exportOrganizations = () => {
     downloadCSV('organizations.csv', orgs.map((o) => ({
       name: o.name,
@@ -826,6 +868,31 @@ const verified = orgs.filter((o) => o.is_verified);
               )}
             </div>
           </div>
+        </div>
+
+        <div className="mb-8 bg-white rounded-xl border border-secondary-200 p-4">
+          <h2 className="font-semibold text-sm text-secondary-900 mb-3">Reset Student Profile Edit Limit</h2>
+          <div className="flex flex-wrap gap-2 items-center">
+            <input
+              type="email"
+              value={resetEmail}
+              onChange={(e) => setResetEmail(e.target.value)}
+              placeholder="student@email.com"
+              className="px-3 py-2 rounded-lg border border-secondary-200 text-sm flex-1 min-w-[200px]"
+            />
+            <button
+              onClick={handleResetStudentLimit}
+              disabled={resetting || !resetEmail}
+              className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-xs font-medium disabled:opacity-50"
+            >
+              {resetting ? 'Resetting...' : 'Reset Limit'}
+            </button>
+          </div>
+          {resetMessage && (
+            <p className={`text-xs mt-2 ${resetMessage.includes('Failed') || resetMessage.includes('No student') ? 'text-error-600' : 'text-success-600'}`}>
+              {resetMessage}
+            </p>
+          )}
         </div>
         <div className="mb-8 bg-white rounded-xl border border-secondary-200 p-4">
           <h2 className="font-semibold text-sm text-secondary-900 mb-3">Export Data for Analysis</h2>
