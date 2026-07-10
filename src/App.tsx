@@ -685,9 +685,6 @@ const totalStudentsForChart =
 
 const pending = orgs.filter((o) => !o.is_verified);
 const verified = orgs.filter((o) => o.is_verified);
-  const pending = orgs.filter((o) => !o.is_verified);
-  const verified = orgs.filter((o) => o.is_verified);
-
   return (
     <div className="min-h-screen bg-secondary-50 py-8">
       <div className="container-app">
