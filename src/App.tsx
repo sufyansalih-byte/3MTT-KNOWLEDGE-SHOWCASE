@@ -482,6 +482,8 @@ function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [students, setStudents] = useState<any[]>([]);  // ADD
+  const [studentFilter, setStudentFilter] = useState<'department' | 'state'>('department');  // ADD
   const [stats, setStats] = useState<{
     statusCounts: Record<string, number>;
     industryCounts: Record<string, number>;
@@ -502,9 +504,16 @@ function AdminDashboardPage() {
       industryCounts[key] = (industryCounts[key] || 0) + 1;
     });
 
-    const { count: studentCount } = await supabase.from('students').select('*', { count: 'exact', head: true });
+   const { count: studentCount } = await supabase
+  .from('students')
+  .select('*', { count: 'exact', head: true });
 
-    setStats({ statusCounts, industryCounts, totalStudents: studentCount ?? 0 });
+const { data: studentRows } = await supabase
+  .from('students')
+  .select('department, state');
+setStudents(studentRows ?? []);
+
+setStats({ statusCounts, industryCounts, totalStudents: studentCount ?? 0 });
   };
 
   useEffect(() => {
@@ -658,6 +667,24 @@ const handleApprove = async (id: string, approve: boolean) => {
     return null;
   }
 
+  const studentChartData = (() => {
+  const counts: Record<string, number> = {};
+  students.forEach((s) => {
+    const key =
+      studentFilter === 'department'
+        ? (s.department || 'Not specified')
+        : (s.state || 'Not specified');
+    counts[key] = (counts[key] || 0) + 1;
+  });
+  return Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10);
+})();
+const totalStudentsForChart =
+  studentChartData.reduce((a, b) => a + b[1], 0) || 1;
+
+const pending = orgs.filter((o) => !o.is_verified);
+const verified = orgs.filter((o) => o.is_verified);
   const pending = orgs.filter((o) => !o.is_verified);
   const verified = orgs.filter((o) => o.is_verified);
 
@@ -689,7 +716,72 @@ const handleApprove = async (id: string, approve: boolean) => {
           </div>
         )}
 
+                {/* STUDENT DISTRIBUTION CHART */}
+        <div className="mb-8 bg-white rounded-xl border border-secondary-200 p-6">
+          <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
+            <div>
+              <h3 className="font-semibold text-sm text-secondary-900">
+                Student Distribution
+              </h3>
+              <p className="text-xs text-secondary-400 mt-0.5">
+                {stats.totalStudents} total registered student
+                {stats.totalStudents !== 1 ? 's' : ''}
+              </p>
+            </div>
+            <select
+              value={studentFilter}
+              onChange={(e) =>
+                setStudentFilter(e.target.value as 'department' | 'state')
+              }
+              className="px-3 py-2 rounded-xl border border-secondary-200
+                bg-secondary-50 text-secondary-700 text-xs font-medium
+                focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+            >
+              <option value="department">By Field of Study</option>
+              <option value="state">By State</option>
+            </select>
+          </div>
+        
+          {studentChartData.length === 0 ? (
+            <p className="text-xs text-secondary-400 text-center py-6">
+              No student data available yet. Students who register with a
+              field of study or state will appear here.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {studentChartData.map(([label, count]) => {
+                const pct = Math.round((count / totalStudentsForChart) * 100);
+                return (
+                  <div key={label}>
+                    <div className="flex justify-between text-xs text-secondary-600 mb-1">
+                      <span className="truncate max-w-[65%] capitalize">
+                        {label}
+                      </span>
+                      <span className="flex-shrink-0 ml-2 font-medium text-secondary-700">
+                        {count} student{count !== 1 ? 's' : ''} ({pct}%)
+                      </span>
+                    </div>
+                    <div className="w-full h-3 bg-secondary-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-primary-500 rounded-full transition-all duration-500"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        
+          <p className="text-[10px] text-secondary-400 mt-4 border-t border-secondary-100 pt-3">
+            Showing top 10 entries. Only students who registered after
+            the field of study update will have department data.
+            Existing accounts show "Not specified" until they update
+            their profile.
+          </p>
+        </div>
 
+        {/* EXISTING 2-COLUMN GRID BELOW */}
         <div className="mb-8 grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-white rounded-xl border border-secondary-200 p-6">
             <h3 className="font-semibold text-sm text-secondary-900 mb-4">Applications by Status</h3>
