@@ -320,7 +320,7 @@ export function StudentDashboardPage() {
 
     await supabase.from('profiles').update({ full_name: editFullName }).eq('id', user.id);
 
-    await supabase
+    const { error: updateError } = await supabase
       .from('students')
       .update({
         department: editDepartment || null,
@@ -329,6 +329,12 @@ export function StudentDashboardPage() {
         graduation_year: editGraduationYear ? parseInt(editGraduationYear) : null,
       })
       .eq('profile_id', user.id);
+
+    if (updateError) {
+      setProfileSaving(false);
+      alert(updateError.message.includes('edit limit') ? 'You have reached your profile edit limit.' : 'Something went wrong saving your profile.');
+      return;
+    }
 
     setProfileSaving(false);
     setProfileSaved(true);
