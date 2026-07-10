@@ -67,13 +67,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        loadProfile(session.user.id, session.user.email || '');
-      } else {
-        setUser(null);
-        setProfile(null);
-      }
-    });
+  if (_event === 'PASSWORD_RECOVERY') {
+    window.location.replace('/auth/reset-password');
+    return;
+  }
+  if (session?.user) {
+    loadProfile(session.user.id, session.user.email || '');
+  } else {
+    setUser(null);
+    setProfile(null);
+  }
+});
 
     return () => {
       listener.subscription.unsubscribe();
