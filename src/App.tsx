@@ -403,13 +403,13 @@ function AboutPage() {
               Founder, SIWES Connect Nigeria
             </p>
             <p className="text-gray-600 leading-relaxed">
-              A Civil Engineering Technology graduate (HND, Federal
+              Salihu Sufiyan Eneye is from Kogi state Nigeria, he is a Civil Engineering Technology graduate (HND, Federal
               Polytechnic Nasarawa) and 3MTT Data Analytics Fellow, Sufiyan
               experienced firsthand how difficult it can be for Nigerian
               students to secure SIWES placements. SIWES Connect Nigeria was
               built to solve that exact problem — giving students a
               transparent way to find host organizations, and giving
-              organizations a transparent way to find trainees.
+              organizations a transparent way to find trainees and giving them more visibility.
             </p>
           </div>
         </div>
@@ -425,11 +425,11 @@ function AboutPage() {
             </div>
             <div>
               <p className="font-medium text-gray-900">Phone</p>
-              <p>+234 800 000 0000</p>
+              <p>+234 9037866465</p>
             </div>
             <div>
               <p className="font-medium text-gray-900">Location</p>
-              <p>Abuja, Nigeria</p>
+              <p>Niger State, Nigeria</p>
             </div>
           </div>
         </div>
