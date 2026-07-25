@@ -444,10 +444,26 @@ interface AdminOrgRow {
   industry: string | null;
   city: string | null;
   state: string | null;
+  address: string | null;
+  description: string | null;
+  website: string | null;
   cac_number: string | null;
   contact_name: string | null;
   is_verified: boolean;
   created_at: string;
+  profile_id: string;
+}
+
+interface AdminStudentRow {
+  id: string;
+  institution: string | null;
+  department: string | null;
+  level: string | null;
+  matric_number: string | null;
+  state: string | null;
+  graduation_year: number | null;
+  created_at: string;
+  profiles: { full_name: string | null; email: string | null } | null;
 }
 
 function downloadCSV(filename: string, rows: Record<string, any>[]) {
@@ -484,6 +500,10 @@ function AdminDashboardPage() {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [students, setStudents] = useState<any[]>([]);  // ADD
   const [studentFilter, setStudentFilter] = useState<'department' | 'state'>('department');  // ADD
+  const [allStudents, setAllStudents] = useState<AdminStudentRow[]>([]);
+  const [studentsLoading, setStudentsLoading] = useState(true);
+  const [selectedOrg, setSelectedOrg] = useState<AdminOrgRow | null>(null);
+  const [selectedStudent, setSelectedStudent] = useState<AdminStudentRow | null>(null);
   const [stats, setStats] = useState<{
     statusCounts: Record<string, number>;
     industryCounts: Record<string, number>;
@@ -548,8 +568,24 @@ setStats({ statusCounts, industryCounts, totalStudents: studentCount ?? 0 });
     setLoading(false);
   };
 
-  useEffect(() => {
+ useEffect(() => {
     if (profile?.role === 'admin') fetchOrgs();
+  }, [profile]);
+
+  const fetchAllStudents = async () => {
+    setStudentsLoading(true);
+    const { data, error } = await supabase
+      .from('students')
+      .select('id, institution, department, level, matric_number, state, graduation_year, created_at, profiles(full_name, email)')
+      .order('created_at', { ascending: false });
+    if (!error && data) {
+      setAllStudents(data as unknown as AdminStudentRow[]);
+    }
+    setStudentsLoading(false);
+  };
+
+  useEffect(() => {
+    if (profile?.role === 'admin') fetchAllStudents();
   }, [profile]);
 
 const handleApprove = async (id: string, approve: boolean) => {
@@ -927,8 +963,8 @@ const verified = orgs.filter((o) => o.is_verified);
             <div className="space-y-3">
               {pending.map((org) => (
                 <div key={org.id} className="bg-white rounded-xl border border-secondary-200 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div>
-                    <h3 className="font-semibold text-secondary-900">{org.name}</h3>
+                  <div className="cursor-pointer" onClick={() => setSelectedOrg(org)}>
+                    <h3 className="font-semibold text-secondary-900 hover:text-primary-600 hover:underline">{org.name}</h3>
                     <p className="text-sm text-secondary-500">
                       {org.industry || 'No industry listed'} • {org.city || '—'}, {org.state || '—'}
                     </p>
@@ -968,10 +1004,10 @@ const verified = orgs.filter((o) => o.is_verified);
             </div>
           ) : (
             <div className="space-y-3">
-              {verified.map((org) => (
+             {verified.map((org) => (
                 <div key={org.id} className="bg-white rounded-xl border border-secondary-200 p-4 flex items-center justify-between">
-                  <div>
-                    <h3 className="font-semibold text-secondary-900">{org.name}</h3>
+                  <div className="cursor-pointer" onClick={() => setSelectedOrg(org)}>
+                    <h3 className="font-semibold text-secondary-900 hover:text-primary-600 hover:underline">{org.name}</h3>
                     <p className="text-sm text-secondary-500">{org.industry || 'No industry listed'} • {org.city || '—'}, {org.state || '—'}</p>
                   </div>
                   <span className="px-3 py-1 bg-success-50 text-success-700 rounded-full text-xs font-medium">
@@ -982,7 +1018,169 @@ const verified = orgs.filter((o) => o.is_verified);
             </div>
           )}
         </div>
+
+        <div className="mt-8">
+          <h2 className="font-semibold text-lg text-secondary-900 mb-4">
+            Registered Students ({allStudents.length})
+          </h2>
+          {studentsLoading ? (
+            <div className="bg-white rounded-xl border border-secondary-200 p-8 text-center text-secondary-500">
+              Loading students…
+            </div>
+          ) : allStudents.length === 0 ? (
+            <div className="bg-white rounded-xl border border-secondary-200 p-8 text-center text-secondary-500">
+              No students registered yet
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {allStudents.map((stu) => (
+                <div
+                  key={stu.id}
+                  className="bg-white rounded-xl border border-secondary-200 p-4 flex items-center justify-between cursor-pointer hover:border-primary-300"
+                  onClick={() => setSelectedStudent(stu)}
+                >
+                  <div>
+                    <h3 className="font-semibold text-secondary-900 hover:text-primary-600 hover:underline">
+                      {stu.profiles?.full_name || 'Unnamed Student'}
+                    </h3>
+                    <p className="text-sm text-secondary-500">
+                      {stu.institution || 'No institution listed'} • {(stu.department || 'field not specified').replace('_', ' ')}
+                    </p>
+                    <p className="text-xs text-secondary-400 mt-1">
+                      Matric: {stu.matric_number || 'N/A'} • {stu.state || '—'}
+                    </p>
+                  </div>
+                  <span className="px-3 py-1 bg-secondary-50 text-secondary-600 rounded-full text-xs font-medium">
+                    View Details
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
+
+      {selectedOrg && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setSelectedOrg(null)} />
+          <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto bg-white rounded-2xl shadow-xl">
+            <div className="sticky top-0 bg-white border-b border-secondary-100 px-5 py-4 flex items-center justify-between">
+              <h2 className="font-semibold text-secondary-900">Organization Details</h2>
+              <button onClick={() => setSelectedOrg(null)} className="text-secondary-400 hover:text-secondary-700 text-xl leading-none">×</button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <h3 className="font-bold text-lg text-secondary-900">{selectedOrg.name}</h3>
+                <p className="text-sm text-secondary-500">{(selectedOrg.industry || 'Unspecified').replace('_', ' ')}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-secondary-50 rounded-xl p-3">
+                  <p className="text-xs text-secondary-500">CAC Number</p>
+                  <p className="font-medium text-secondary-900 text-sm">{selectedOrg.cac_number || 'N/A'}</p>
+                </div>
+                <div className="bg-secondary-50 rounded-xl p-3">
+                  <p className="text-xs text-secondary-500">Contact Name</p>
+                  <p className="font-medium text-secondary-900 text-sm">{selectedOrg.contact_name || 'N/A'}</p>
+                </div>
+                <div className="bg-secondary-50 rounded-xl p-3">
+                  <p className="text-xs text-secondary-500">City / State</p>
+                  <p className="font-medium text-secondary-900 text-sm">{selectedOrg.city || '—'}, {selectedOrg.state || '—'}</p>
+                </div>
+                <div className="bg-secondary-50 rounded-xl p-3">
+                  <p className="text-xs text-secondary-500">Status</p>
+                  <p className="font-medium text-secondary-900 text-sm">{selectedOrg.is_verified ? 'Verified' : 'Pending'}</p>
+                </div>
+              </div>
+              {selectedOrg.address && (
+                <div>
+                  <p className="text-xs font-semibold text-secondary-500 uppercase mb-1">Address</p>
+                  <p className="text-sm text-secondary-700">{selectedOrg.address}</p>
+                </div>
+              )}
+              {selectedOrg.description && (
+                <div>
+                  <p className="text-xs font-semibold text-secondary-500 uppercase mb-1">Description</p>
+                  <p className="text-sm text-secondary-700 leading-relaxed">{selectedOrg.description}</p>
+                </div>
+              )}
+              {selectedOrg.website && (
+                <div>
+                  <p className="text-xs font-semibold text-secondary-500 uppercase mb-1">Website</p>
+                  <a href={selectedOrg.website.startsWith('http') ? selectedOrg.website : `https://${selectedOrg.website}`} target="_blank" rel="noopener noreferrer" className="text-sm text-primary-600 hover:underline">
+                    {selectedOrg.website}
+                  </a>
+                </div>
+              )}
+              <p className="text-xs text-secondary-400 pt-2 border-t border-secondary-100">
+                Registered on {new Date(selectedOrg.created_at).toLocaleDateString('en-NG')}
+              </p>
+              {!selectedOrg.is_verified && (
+                <div className="flex gap-2 pt-2">
+                  <button
+                    onClick={() => { handleApprove(selectedOrg.id, true); setSelectedOrg(null); }}
+                    className="flex-1 px-4 py-2 bg-success-600 hover:bg-success-700 text-white rounded-lg text-sm font-medium"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    onClick={() => { handleApprove(selectedOrg.id, false); setSelectedOrg(null); }}
+                    className="flex-1 px-4 py-2 bg-error-50 hover:bg-error-100 text-error-700 border border-error-200 rounded-lg text-sm font-medium"
+                  >
+                    Reject
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {selectedStudent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setSelectedStudent(null)} />
+          <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto bg-white rounded-2xl shadow-xl">
+            <div className="sticky top-0 bg-white border-b border-secondary-100 px-5 py-4 flex items-center justify-between">
+              <h2 className="font-semibold text-secondary-900">Student Details</h2>
+              <button onClick={() => setSelectedStudent(null)} className="text-secondary-400 hover:text-secondary-700 text-xl leading-none">×</button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <h3 className="font-bold text-lg text-secondary-900">{selectedStudent.profiles?.full_name || 'Unnamed Student'}</h3>
+                <p className="text-sm text-secondary-500">{selectedStudent.profiles?.email || 'No email on file'}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-secondary-50 rounded-xl p-3">
+                  <p className="text-xs text-secondary-500">Institution</p>
+                  <p className="font-medium text-secondary-900 text-sm">{selectedStudent.institution || 'N/A'}</p>
+                </div>
+                <div className="bg-secondary-50 rounded-xl p-3">
+                  <p className="text-xs text-secondary-500">Matric Number</p>
+                  <p className="font-medium text-secondary-900 text-sm">{selectedStudent.matric_number || 'N/A'}</p>
+                </div>
+                <div className="bg-secondary-50 rounded-xl p-3">
+                  <p className="text-xs text-secondary-500">Field of Study</p>
+                  <p className="font-medium text-secondary-900 text-sm">{(selectedStudent.department || 'Not specified').replace('_', ' ')}</p>
+                </div>
+                <div className="bg-secondary-50 rounded-xl p-3">
+                  <p className="text-xs text-secondary-500">Level</p>
+                  <p className="font-medium text-secondary-900 text-sm">{selectedStudent.level || 'N/A'}</p>
+                </div>
+                <div className="bg-secondary-50 rounded-xl p-3">
+                  <p className="text-xs text-secondary-500">State</p>
+                  <p className="font-medium text-secondary-900 text-sm">{selectedStudent.state || 'N/A'}</p>
+                </div>
+                <div className="bg-secondary-50 rounded-xl p-3">
+                  <p className="text-xs text-secondary-500">Expected Graduation</p>
+                  <p className="font-medium text-secondary-900 text-sm">{selectedStudent.graduation_year || 'N/A'}</p>
+                </div>
+              </div>
+              <p className="text-xs text-secondary-400 pt-2 border-t border-secondary-100">
+                Registered on {new Date(selectedStudent.created_at).toLocaleDateString('en-NG')}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
