@@ -314,9 +314,18 @@ export function StudentDashboardPage() {
   };
 
   const handleProfileSave = async () => {
-    if (!user) return;
-    setProfileSaving(true);
-    setProfileSaved(false);
+  if (!user) return;
+
+  // Block profile edits until documents are uploaded
+  if (!allDocumentsUploaded) {
+    alert(
+      '⚠️ Account Not Activated\n\nYou must upload all 3 verification documents before you can edit your profile:\n\n• Institution ID Card\n• Passport Photograph\n• SIWES Introduction Letter\n\nGo to the "Upload Documents" tab to activate your account.'
+    );
+    return;
+  }
+
+  setProfileSaving(true);
+  setProfileSaved(false);
 
     await supabase.from('profiles').update({ full_name: editFullName }).eq('id', user.id);
 
@@ -915,13 +924,38 @@ export function StudentDashboardPage() {
                   </div>
                 )}
 
-                <button
-                  onClick={handleProfileSave}
-                  disabled={profileSaving}
-                  className="w-full py-3 bg-primary-600 hover:bg-primary-700 text-white font-bold rounded-xl text-sm disabled:opacity-50"
-                >
-                  {profileSaving ? 'Saving...' : 'Save Changes'}
+                {!allDocumentsUploaded && (
+  <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 
+    flex items-start gap-3">
+    <span className="text-amber-500 text-lg flex-shrink-0">⚠️</span>
+    <div>
+      <p className="font-semibold text-amber-900 text-sm">
+        Account Not Activated
+      </p>
+      <p className="text-amber-700 text-xs mt-0.5 leading-relaxed">
+        Upload all 3 verification documents on the{' '}
+        <button
+          type="button"
+          onClick={() => setActiveTab('cv')}
+          className="underline font-semibold hover:text-amber-900"
+        >
+                  Upload Documents tab
                 </button>
+                {' '}before editing your profile.
+              </p>
+            </div>
+          </div>
+        )}
+        
+        <button
+          onClick={handleProfileSave}
+          disabled={profileSaving || !allDocumentsUploaded}
+          className="w-full py-3 bg-primary-600 hover:bg-primary-700 
+            text-white font-bold rounded-xl text-sm disabled:opacity-50 
+            disabled:cursor-not-allowed"
+        >
+          {profileSaving ? 'Saving...' : 'Save Changes'}
+        </button>
               </CardBody>
             </Card>
           </div>
