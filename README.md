@@ -4,7 +4,7 @@
 
 Built for the **3MTT Knowledge Showcase 2.0** competition.
 
-🔗 **Live Site:** [3-mtt-knowledge-showcase.vercel.app](https://3-mtt-knowledge-showcase.vercel.app)
+🔗 **Live Site:** [siwesconnectnigera.vercel.app](https://siwesconnectnigeria.vercel.app)
 
 ---
 
