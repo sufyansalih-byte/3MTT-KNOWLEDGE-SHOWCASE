@@ -108,26 +108,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { error: msg };
     }
 
-    const { data: authData, error: signUpError } = await supabase.auth.signUp({
+   const { data: authData, error: signUpError } = await supabase.auth.signUp({
       email: email.toLowerCase(),
       password,
-      options: {
-        data: {
-          full_name: fullName,
-          role,
-          institution: extra?.institution || null,
-          matric_number: extra?.matric_number || null,
-          department: extra?.department || null,
-          industry: extra?.industry || null,
-          cac_number: extra?.cac_number || null,
-          contact_name: extra?.contact_name || null,
-          state: extra?.state || null,
-          city: extra?.city || null,
-          description: extra?.description || null,
-          website: extra?.website || null,
-          address: extra?.address || null,
-        },
-      },
     });
 
     if (signUpError) {
@@ -144,8 +127,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { error: msg };
     }
 
-    // Profile, student, and organization rows are now created automatically
-    // by the handle_new_user() database trigger on auth.users.
+    const { error: profileError } = await supabase.from('profiles').insert({
+      id: newUserId,
+      email: email.toLowerCase(),
+      full_name: fullName,
+      role,
+    });
+
+    if (profileError) {
+      setError(profileError.message);
+      setLoading(false);
+      return { error: profileError.message };
+    }
+
+    if (role === 'organization') {
+      const { error: orgError } = await supabase.from('organizations').insert({
+        profile_id: newUserId,
+        name: fullName,
+        industry: extra?.industry || null,
+        cac_number: extra?.cac_number || null,
+        contact_name: extra?.contact_name || null,
+        state: extra?.state || null,
+        city: extra?.city || null,
+        description: extra?.description || null,
+        website: extra?.website || null,
+        address: extra?.address || null,
+        is_verified: false,
+      });
+      if (orgError) {
+        setError(orgError.message);
+        setLoading(false);
+        return { error: orgError.message };
+      }
+    } else {
+      const { error: studentError } = await supabase.from('students').insert({
+        profile_id: newUserId,
+        institution: extra?.institution || '',
+        matric_number: extra?.matric_number || null,
+        department: extra?.department || null,
+        skills: [],
+      });
+      if (studentError) {
+        setError(studentError.message);
+        setLoading(false);
+        return { error: studentError.message };
+      }
+    }.
 
     await loadProfile(newUserId, email.toLowerCase());
     setLoading(false);
