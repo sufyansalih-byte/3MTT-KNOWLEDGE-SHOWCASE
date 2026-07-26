@@ -1,10 +1,10 @@
 import {
   createContext,
-  useContext,
-  useState,
-  useEffect,
   useCallback,
-  ReactNode,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
 } from 'react';
 
 import { supabase } from '../lib/supabase';
@@ -14,7 +14,6 @@ interface SignUpExtra {
   institution?: string;
   matric_number?: string;
   department?: string;
-
   industry?: string;
   cac_number?: string;
   contact_name?: string;
@@ -25,14 +24,14 @@ interface SignUpExtra {
   address?: string;
 }
 
+interface AuthUser {
+  id: string;
+  email: string;
+}
+
 interface AuthContextType {
-  user: {
-    id: string;
-    email: string;
-  } | null;
-
+  user: AuthUser | null;
   profile: Profile | null;
-
   loading: boolean;
   error: string | null;
 
@@ -52,32 +51,22 @@ interface AuthContextType {
   signOut: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType | undefined>(
+  undefined
+);
 
 export function AuthProvider({
   children,
 }: {
   children: ReactNode;
 }) {
-  const [user, setUser] = useState<{
-    id: string;
-    email: string;
-  } | null>(null);
-
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
-
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  /*
-  |--------------------------------------------------------------------------
-  | Load User Profile
-  |--------------------------------------------------------------------------
-  */
-
   const loadProfile = useCallback(
     async (userId: string, email: string) => {
-      // Set authenticated user immediately
       setUser({
         id: userId,
         email,
@@ -90,7 +79,11 @@ export function AuthProvider({
         .maybeSingle();
 
       if (profileError) {
-        console.error('Error loading profile:', profileError);
+        console.error(
+          'Error loading profile:',
+          profileError
+        );
+
         setProfile(null);
         return;
       }
@@ -100,30 +93,26 @@ export function AuthProvider({
     []
   );
 
-  /*
-  |--------------------------------------------------------------------------
-  | Authentication Listener
-  |--------------------------------------------------------------------------
-  */
-
   useEffect(() => {
-    let mounted = true;
+    let isMounted = true;
 
     const initializeAuth = async () => {
       const {
         data: { session },
       } = await supabase.auth.getSession();
 
-      if (!mounted) return;
+      if (!isMounted) return;
 
       if (session?.user) {
         await loadProfile(
           session.user.id,
-          session.user.email || ''
+          session.user.email ?? ''
         );
       }
 
-      setLoading(false);
+      if (isMounted) {
+        setLoading(false);
+      }
     };
 
     initializeAuth();
@@ -132,18 +121,17 @@ export function AuthProvider({
       data: { subscription },
     } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        /*
-         * Password recovery is kept separate from normal login.
-         */
         if (event === 'PASSWORD_RECOVERY') {
-          window.location.replace('/auth/reset-password');
+          window.location.replace(
+            '/auth/reset-password'
+          );
           return;
         }
 
         if (session?.user) {
           await loadProfile(
             session.user.id,
-            session.user.email || ''
+            session.user.email ?? ''
           );
         } else {
           setUser(null);
@@ -153,16 +141,10 @@ export function AuthProvider({
     );
 
     return () => {
-      mounted = false;
+      isMounted = false;
       subscription.unsubscribe();
     };
   }, [loadProfile]);
-
-  /*
-  |--------------------------------------------------------------------------
-  | Sign Up
-  |--------------------------------------------------------------------------
-  */
 
   const signUp = useCallback(
     async (
@@ -176,19 +158,19 @@ export function AuthProvider({
       setLoading(true);
 
       try {
-        const normalizedEmail = email.trim().toLowerCase();
-        const normalizedFullName = fullName.trim();
+        const normalizedEmail = email
+          .trim()
+          .toLowerCase();
 
-        /*
-         * Basic validation
-         */
+        const normalizedFullName = fullName.trim();
 
         if (
           !normalizedEmail ||
           !password ||
           !normalizedFullName
         ) {
-          const message = 'All fields are required';
+          const message =
+            'All fields are required';
 
           setError(message);
 
@@ -209,10 +191,8 @@ export function AuthProvider({
         }
 
         /*
-         * Create Supabase Auth User
-         *
-         * Email confirmation is intentionally not handled here.
-         * Your Supabase project currently has email confirmation disabled.
+         * Email confirmation is intentionally not handled.
+         * Supabase email confirmation is disabled for this MVP.
          */
 
         const {
@@ -244,18 +224,13 @@ export function AuthProvider({
           };
         }
 
-        /*
-         * Create Profile
-         */
-
-        const {
-          error: profileError,
-        } = await supabase.from('profiles').insert({
-          id: newUserId,
-          email: normalizedEmail,
-          full_name: normalizedFullName,
-          role,
-        });
+        const { error: profileError } =
+          await supabase.from('profiles').insert({
+            id: newUserId,
+            email: normalizedEmail,
+            full_name: normalizedFullName,
+            role,
+          });
 
         if (profileError) {
           setError(profileError.message);
@@ -265,34 +240,26 @@ export function AuthProvider({
           };
         }
 
-        /*
-         * Create Organization Record
-         */
-
         if (role === 'organization') {
-          const {
-            error: organizationError,
-          } = await supabase.from('organizations').insert({
-            profile_id: newUserId,
-            name: normalizedFullName,
-
-            industry: extra?.industry || null,
-            cac_number: extra?.cac_number || null,
-            contact_name: extra?.contact_name || null,
-
-            state: extra?.state || null,
-            city: extra?.city || null,
-
-            description: extra?.description || null,
-            website: extra?.website || null,
-            address: extra?.address || null,
-
-            // New organizations require admin verification
-            is_verified: false,
-          });
+          const { error: organizationError } =
+            await supabase.from('organizations').insert({
+              profile_id: newUserId,
+              name: normalizedFullName,
+              industry: extra?.industry || null,
+              cac_number: extra?.cac_number || null,
+              contact_name: extra?.contact_name || null,
+              state: extra?.state || null,
+              city: extra?.city || null,
+              description: extra?.description || null,
+              website: extra?.website || null,
+              address: extra?.address || null,
+              is_verified: false,
+            });
 
           if (organizationError) {
-            setError(organizationError.message);
+            setError(
+              organizationError.message
+            );
 
             return {
               error: organizationError.message,
@@ -300,22 +267,18 @@ export function AuthProvider({
           }
         }
 
-        /*
-         * Create Student Record
-         */
-
         if (role === 'student') {
-          const {
-            error: studentError,
-          } = await supabase.from('students').insert({
-            profile_id: newUserId,
-
-            institution: extra?.institution || '',
-            matric_number: extra?.matric_number || null,
-            department: extra?.department || null,
-
-            skills: [],
-          });
+          const { error: studentError } =
+            await supabase.from('students').insert({
+              profile_id: newUserId,
+              institution:
+                extra?.institution || '',
+              matric_number:
+                extra?.matric_number || null,
+              department:
+                extra?.department || null,
+              skills: [],
+            });
 
           if (studentError) {
             setError(studentError.message);
@@ -326,10 +289,6 @@ export function AuthProvider({
           }
         }
 
-        /*
-         * Load the newly-created profile
-         */
-
         await loadProfile(
           newUserId,
           normalizedEmail
@@ -339,7 +298,10 @@ export function AuthProvider({
           error: null,
         };
       } catch (err) {
-        console.error('Unexpected signup error:', err);
+        console.error(
+          'Unexpected signup error:',
+          err
+        );
 
         const message =
           err instanceof Error
@@ -358,12 +320,6 @@ export function AuthProvider({
     [loadProfile]
   );
 
-  /*
-  |--------------------------------------------------------------------------
-  | Sign In
-  |--------------------------------------------------------------------------
-  */
-
   const signIn = useCallback(
     async (
       email: string,
@@ -373,15 +329,18 @@ export function AuthProvider({
       setLoading(true);
 
       try {
-        const normalizedEmail = email.trim().toLowerCase();
+        const normalizedEmail = email
+          .trim()
+          .toLowerCase();
 
         const {
           data,
           error: signInError,
-        } = await supabase.auth.signInWithPassword({
-          email: normalizedEmail,
-          password,
-        });
+        } =
+          await supabase.auth.signInWithPassword({
+            email: normalizedEmail,
+            password,
+          });
 
         if (signInError) {
           setError(signInError.message);
@@ -394,7 +353,7 @@ export function AuthProvider({
         if (data.user) {
           await loadProfile(
             data.user.id,
-            data.user.email || normalizedEmail
+            data.user.email ?? normalizedEmail
           );
         }
 
@@ -402,7 +361,10 @@ export function AuthProvider({
           error: null,
         };
       } catch (err) {
-        console.error('Unexpected signin error:', err);
+        console.error(
+          'Unexpected signin error:',
+          err
+        );
 
         const message =
           err instanceof Error
@@ -421,12 +383,6 @@ export function AuthProvider({
     [loadProfile]
   );
 
-  /*
-  |--------------------------------------------------------------------------
-  | Sign Out
-  |--------------------------------------------------------------------------
-  */
-
   const signOut = useCallback(async () => {
     setLoading(true);
 
@@ -436,16 +392,15 @@ export function AuthProvider({
       setUser(null);
       setProfile(null);
       setError(null);
+    } catch (err) {
+      console.error(
+        'Unexpected signout error:',
+        err
+      );
     } finally {
       setLoading(false);
     }
   }, []);
-
-  /*
-  |--------------------------------------------------------------------------
-  | Context Provider
-  |--------------------------------------------------------------------------
-  */
 
   return (
     <AuthContext.Provider
@@ -464,145 +419,14 @@ export function AuthProvider({
   );
 }
 
-/*
-|--------------------------------------------------------------------------
-| useAuth Hook
-|--------------------------------------------------------------------------
-*/
-
 export function useAuth() {
   const context = useContext(AuthContext);
 
-  if (context === undefined) {
+  if (!context) {
     throw new Error(
       'useAuth must be used within an AuthProvider'
     );
   }
 
-  return context;
-}      const msg = 'Password must be at least 6 characters';
-      setError(msg);
-      setLoading(false);
-      return { error: msg };
-    }
-
-   const { data: authData, error: signUpError } = await supabase.auth.signUp({
-      email: email.toLowerCase(),
-      password,
-    });
-
-    if (signUpError) {
-      setError(signUpError.message);
-      setLoading(false);
-      return { error: signUpError.message };
-    }
-
-    const newUserId = authData.user?.id;
-    if (!newUserId) {
-      const msg = 'Could not create user. Please try again.';
-      setError(msg);
-      setLoading(false);
-      return { error: msg };
-    }
-
-    const { error: profileError } = await supabase.from('profiles').insert({
-      id: newUserId,
-      email: email.toLowerCase(),
-      full_name: fullName,
-      role,
-    });
-
-    if (profileError) {
-      setError(profileError.message);
-      setLoading(false);
-      return { error: profileError.message };
-    }
-
-    if (role === 'organization') {
-      const { error: orgError } = await supabase.from('organizations').insert({
-        profile_id: newUserId,
-        name: fullName,
-        industry: extra?.industry || null,
-        cac_number: extra?.cac_number || null,
-        contact_name: extra?.contact_name || null,
-        state: extra?.state || null,
-        city: extra?.city || null,
-        description: extra?.description || null,
-        website: extra?.website || null,
-        address: extra?.address || null,
-        is_verified: false,
-      });
-      if (orgError) {
-        setError(orgError.message);
-        setLoading(false);
-        return { error: orgError.message };
-      }
-    } else {
-      const { error: studentError } = await supabase.from('students').insert({
-        profile_id: newUserId,
-        institution: extra?.institution || '',
-        matric_number: extra?.matric_number || null,
-        department: extra?.department || null,
-        skills: [],
-      });
-      if (studentError) {
-        setError(studentError.message);
-        setLoading(false);
-        return { error: studentError.message };
-      }
-    }.
-
-    await loadProfile(newUserId, email.toLowerCase());
-    setLoading(false);
-    return { error: null };
-  }, [loadProfile]);
-
-  const signIn = useCallback(async (
-    email: string,
-    password: string
-  ): Promise<{ error: string | null }> => {
-    setError(null);
-    setLoading(true);
-
-    const { data, error: signInError } = await supabase.auth.signInWithPassword({
-      email: email.toLowerCase(),
-      password,
-    });
-
-    if (signInError) {
-      setError(signInError.message);
-      setLoading(false);
-      return { error: signInError.message };
-    }
-
-    if (data.user) {
-      await loadProfile(data.user.id, data.user.email || '');
-    }
-
-    setLoading(false);
-    return { error: null };
-  }, [loadProfile]);
-
-  const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    setProfile(null);
-    setError(null);
-  }, []);
-
-  return (
-    <AuthContext.Provider
-      value={{ user, profile, loading, error, signUp, signIn, signOut }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
   return context;
 }
