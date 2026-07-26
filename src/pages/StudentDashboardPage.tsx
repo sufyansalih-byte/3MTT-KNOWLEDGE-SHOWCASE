@@ -479,7 +479,7 @@ export function StudentDashboardPage() {
           </div>
         </div>
 
-        <div>
+        <div className="flex gap-2 overflow-x-auto px-4 pb-3">
         {[
             { id: 'overview', label: 'Overview', icon: TrendingUp },
             { id: 'applications', label: 'Applications', icon: Briefcase },
@@ -490,7 +490,7 @@ export function StudentDashboardPage() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as TabType)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${activeTab === tab.id ? 'bg-primary-600 text-white' : 'bg-secondary-100 text-secondary-600'}`}
+              className={`flex shrink-0 items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${activeTab === tab.id ? 'bg-primary-600 text-white' : 'bg-secondary-100 text-secondary-600'}`}
             >
               <tab.icon className="w-4 h-4" />
               {tab.label}
