@@ -16,6 +16,7 @@ export function AuthPage() {
   const [roleChosen, setRoleChosen] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [role, setRole] = useState<'student' | 'organization'>('student');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -64,6 +65,12 @@ export function AuthPage() {
           setError(result.error);
         }
       } else {
+        if (password !== confirmPassword) {
+          setError('Passwords do not match');
+          setLoading(false);
+          return;
+        }
+
         const result = await signUp(email, password, role);
         if (result.error) {
           setError(result.error);
@@ -84,6 +91,7 @@ export function AuthPage() {
     setMode(nextMode);
     if (nextMode === 'signup') setRoleChosen(false);
     setAwaitingEmailConfirmation(false);
+    setConfirmPassword('');
     setError(null);
   };
 
@@ -214,6 +222,30 @@ export function AuthPage() {
                       </button>
                     </div>
                   </div>
+
+                  {mode === 'signup' && (
+                    <div>
+                      <label className="block text-xs font-semibold text-secondary-700 mb-1">Confirm Password</label>
+                      <div className="relative">
+                        <input
+                          type={showPassword ? 'text' : 'password'}
+                          placeholder="••••••••"
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          required
+                          minLength={6}
+                          className={`w-full px-3 py-2.5 rounded-xl border bg-white text-secondary-800 text-sm focus:outline-none focus:ring-2 pr-10 transition-all ${
+                            confirmPassword && confirmPassword !== password
+                              ? 'border-error-300 focus:ring-error-500/20 focus:border-error-500'
+                              : 'border-secondary-200 focus:ring-primary-500/20 focus:border-primary-500'
+                          }`}
+                        />
+                      </div>
+                      {confirmPassword && confirmPassword !== password && (
+                        <p className="text-[11px] text-error-600 mt-1">Passwords do not match</p>
+                      )}
+                    </div>
+                  )}
 
                   {mode === 'signup' && (
                     <div className="pt-1">
