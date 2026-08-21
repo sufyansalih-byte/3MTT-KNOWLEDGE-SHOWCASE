@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Layout } from './components/layout/Layout';
+import { CookieConsent } from './components/layout/CookieConsent';
 import { supabase } from './lib/supabase';
 import {
   HomePage,
@@ -10,6 +11,7 @@ import {
   DashboardPage,
   StudentDashboardPage,
   OrganizationDashboardPage,
+  OnboardingPage,
 } from './pages';
 
 function HistoryPage() {
@@ -1514,6 +1516,7 @@ function App() {
           <Route path="/auth/signin" element={<AuthPage />} />
           <Route path="/auth/:mode" element={<AuthPage />} />
           <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/onboarding" element={<OnboardingPage />} />
 
           {/* Dashboard routes - protected layout */}
           <Route path="/dashboard" element={<DashboardPage />} />
@@ -1537,6 +1540,7 @@ function App() {
           {/* Catch-all redirect */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        <CookieConsent />
       </AuthProvider>
     </BrowserRouter>
   );

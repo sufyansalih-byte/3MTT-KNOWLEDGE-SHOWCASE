@@ -1,13 +1,14 @@
 import { Link } from 'react-router-dom';
-import { GraduationCap, Search, CheckCircle2 } from 'lucide-react';
+import { GraduationCap, Search, CheckCircle2, ShieldCheck, Building2, NotebookPen, BarChart3, FileCheck2 } from 'lucide-react';
 
 export function HomePage() {
   return (
     <div className="min-h-screen">
       {/* SECTION 1: HERO */}
       <section className="bg-gradient-to-br from-primary-700 to-primary-900 text-white py-20 px-6 text-center">
-        <div className="inline-flex bg-white/10 border border-white/20 rounded-full text-xs px-3 py-1 mb-6">
-          🛡️ Built for 3MTT Knowledge Showcase 2026 · ITF Official Program
+        <div className="inline-flex items-center gap-1.5 bg-white/10 border border-white/20 rounded-full text-xs px-3 py-1 mb-6">
+          <ShieldCheck className="w-3.5 h-3.5" />
+          Built for 3MTT Knowledge Showcase 2026 · ITF Official Program
         </div>
 
         <h1 className="font-heading text-4xl sm:text-5xl font-extrabold leading-tight max-w-3xl mx-auto">
@@ -21,15 +22,15 @@ export function HomePage() {
         <div className="flex gap-3 justify-center mt-8 flex-wrap">
           <Link
             to="/auth?role=student"
-            className="bg-white text-primary-700 font-bold px-6 py-3 rounded-xl hover:bg-primary-50 transition-colors"
+            className="inline-flex items-center gap-2 bg-white text-primary-700 font-bold px-6 py-3 rounded-xl hover:bg-primary-50 transition-colors"
           >
-            🎓 I'm a Student
+            <GraduationCap className="w-4 h-4" /> I'm a Student
           </Link>
           <Link
             to="/auth?role=organization"
-            className="border-2 border-white/40 text-white px-6 py-3 rounded-xl hover:bg-white/10 font-medium transition-colors"
+            className="inline-flex items-center gap-2 border-2 border-white/40 text-white px-6 py-3 rounded-xl hover:bg-white/10 font-medium transition-colors"
           >
-            🏢 Register Organization
+            <Building2 className="w-4 h-4" /> Register Organization
           </Link>
         </div>
 
@@ -116,28 +117,36 @@ export function HomePage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-3xl mx-auto">
           <div className="bg-secondary-50 rounded-2xl p-6 border border-secondary-200">
-            <h3 className="font-semibold text-secondary-900 mb-2">✅ Verified Organizations Only</h3>
+            <h3 className="flex items-center gap-2 font-semibold text-secondary-900 mb-2">
+              <CheckCircle2 className="w-5 h-5 text-primary-600" /> Verified Organizations Only
+            </h3>
             <p className="text-sm text-secondary-600">
               Every host organization is reviewed by an admin before appearing in search. No fake placements, no wasted trips.
             </p>
           </div>
 
           <div className="bg-secondary-50 rounded-2xl p-6 border border-secondary-200">
-            <h3 className="font-semibold text-secondary-900 mb-2">📓 Digital SIWES Logbook</h3>
+            <h3 className="flex items-center gap-2 font-semibold text-secondary-900 mb-2">
+              <NotebookPen className="w-5 h-5 text-primary-600" /> Digital SIWES Logbook
+            </h3>
             <p className="text-sm text-secondary-600">
               Record your daily IT activities on your phone and use your SIWES Connect journal to accurately fill your institution's official paper logbook at the end of each day.
             </p>
           </div>
 
           <div className="bg-secondary-50 rounded-2xl p-6 border border-secondary-200">
-            <h3 className="font-semibold text-secondary-900 mb-2">📊 Real-Time Application Tracker</h3>
+            <h3 className="flex items-center gap-2 font-semibold text-secondary-900 mb-2">
+              <BarChart3 className="w-5 h-5 text-primary-600" /> Real-Time Application Tracker
+            </h3>
             <p className="text-sm text-secondary-600">
               Know exactly where each application stands — pending, under review, accepted, or rejected.
             </p>
           </div>
 
           <div className="bg-secondary-50 rounded-2xl p-6 border border-secondary-200">
-            <h3 className="font-semibold text-secondary-900 mb-2">📄 ITF-Compliant Process</h3>
+            <h3 className="flex items-center gap-2 font-semibold text-secondary-900 mb-2">
+              <FileCheck2 className="w-5 h-5 text-primary-600" /> ITF-Compliant Process
+            </h3>
             <p className="text-sm text-secondary-600">
               SIWES Connect follows the official ITF attachment process — from placement search to logbook submission.
             </p>
@@ -189,16 +198,10 @@ export function HomePage() {
 
       {/* SECTION 6: FOOTER (thin bar only) */}
       <footer className="bg-secondary-900 text-white py-4 px-6">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-2 max-w-5xl mx-auto">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-2 max-w-5xl mx-auto">
           <p className="text-secondary-400 text-xs">
             © 2025 SIWES Connect Nigeria — Built for the 3MTT Knowledge Showcase. Powered by ITF SIWES Program.
           </p>
-          <Link
-            to="/auth/signin"
-            className="bg-secondary-800 hover:bg-secondary-700 text-white text-xs font-medium px-4 py-2 rounded-lg transition-colors"
-          >
-            Admin Portal →
-          </Link>
         </div>
       </footer>
     </div>

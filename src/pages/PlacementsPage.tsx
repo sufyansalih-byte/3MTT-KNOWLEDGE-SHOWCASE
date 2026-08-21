@@ -48,6 +48,7 @@ export function PlacementsPage() {
 
   const fetchPlacements = async () => {
     try {
+      const nowIso = new Date().toISOString();
       const { data, error } = await supabase
         .from('placements')
         .select(`
@@ -62,6 +63,7 @@ export function PlacementsPage() {
           )
         `)
         .eq('is_active', true)
+        .or(`deadline.gte.${nowIso},deadline.is.null`)
         .order('created_at', { ascending: false });
 
       if (error) throw error;

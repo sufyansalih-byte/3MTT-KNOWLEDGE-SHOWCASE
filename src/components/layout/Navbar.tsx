@@ -99,7 +99,7 @@ export function Navbar() {
                       className="fixed inset-0 z-40"
                       onClick={() => setIsProfileOpen(false)}
                     />
-                    <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl border border-secondary-200 shadow-lg py-2 z-50 animate-slide-down">
+                    <div className="absolute right-0 top-full mt-2 w-[calc(100vw-2rem)] max-w-56 bg-white rounded-xl border border-secondary-200 shadow-lg py-2 z-50 animate-slide-down">
                       <div className="px-4 py-2 border-b border-secondary-100">
                         <p className="text-sm font-medium text-secondary-800">{profile?.full_name}</p>
                         <p className="text-xs text-secondary-500">{profile?.email}</p>

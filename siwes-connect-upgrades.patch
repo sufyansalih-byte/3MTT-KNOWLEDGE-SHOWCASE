@@ -1,0 +1,1643 @@
+diff --git a/src/App.tsx b/src/App.tsx
+index 1b4c6a1..96f8a00 100644
+--- a/src/App.tsx
++++ b/src/App.tsx
+@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
+ import { BrowserRouter, Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom';
+ import { AuthProvider, useAuth } from './contexts/AuthContext';
+ import { Layout } from './components/layout/Layout';
++import { CookieConsent } from './components/layout/CookieConsent';
+ import { supabase } from './lib/supabase';
+ import {
+   HomePage,
+@@ -10,6 +11,7 @@ import {
+   DashboardPage,
+   StudentDashboardPage,
+   OrganizationDashboardPage,
++  OnboardingPage,
+ } from './pages';
+ 
+ function HistoryPage() {
+@@ -1514,6 +1516,7 @@ function App() {
+           <Route path="/auth/signin" element={<AuthPage />} />
+           <Route path="/auth/:mode" element={<AuthPage />} />
+           <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
++          <Route path="/onboarding" element={<OnboardingPage />} />
+ 
+           {/* Dashboard routes - protected layout */}
+           <Route path="/dashboard" element={<DashboardPage />} />
+@@ -1537,6 +1540,7 @@ function App() {
+           {/* Catch-all redirect */}
+           <Route path="*" element={<Navigate to="/" replace />} />
+         </Routes>
++        <CookieConsent />
+       </AuthProvider>
+     </BrowserRouter>
+   );
+diff --git a/src/components/layout/CookieConsent.tsx b/src/components/layout/CookieConsent.tsx
+new file mode 100644
+index 0000000..34c3dd3
+--- /dev/null
++++ b/src/components/layout/CookieConsent.tsx
+@@ -0,0 +1,54 @@
++import { useEffect, useState } from 'react';
++import { Link } from 'react-router-dom';
++import { Cookie } from 'lucide-react';
++
++const STORAGE_KEY = 'siwes_cookie_consent';
++
++export function CookieConsent() {
++  const [visible, setVisible] = useState(false);
++
++  useEffect(() => {
++    try {
++      const consent = localStorage.getItem(STORAGE_KEY);
++      if (!consent) setVisible(true);
++    } catch {
++      // If localStorage is unavailable, don't block rendering the app.
++      setVisible(true);
++    }
++  }, []);
++
++  const accept = () => {
++    try {
++      localStorage.setItem(STORAGE_KEY, 'accepted');
++    } catch {
++      // Ignore storage errors — the banner will just reappear next visit.
++    }
++    setVisible(false);
++  };
++
++  if (!visible) return null;
++
++  return (
++    <div className="fixed bottom-0 left-0 right-0 z-[100] p-4 sm:p-6">
++      <div className="max-w-3xl mx-auto bg-secondary-900 text-white rounded-2xl shadow-xl border border-secondary-700 p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4">
++        <div className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0">
++          <Cookie className="w-5 h-5" />
++        </div>
++        <p className="text-sm text-secondary-200 flex-1 leading-relaxed">
++          We use only essential session cookies to keep you signed in securely. We don't use tracking,
++          advertising, or third-party analytics cookies.{' '}
++          <Link to="/cookies" className="underline text-white hover:text-primary-300">
++            Learn more
++          </Link>
++        </p>
++        <button
++          type="button"
++          onClick={accept}
++          className="w-full sm:w-auto flex-shrink-0 px-5 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium transition-colors"
++        >
++          Got it
++        </button>
++      </div>
++    </div>
++  );
++}
+diff --git a/src/components/layout/Navbar.tsx b/src/components/layout/Navbar.tsx
+index afa6033..bd137e9 100644
+--- a/src/components/layout/Navbar.tsx
++++ b/src/components/layout/Navbar.tsx
+@@ -99,7 +99,7 @@ export function Navbar() {
+                       className="fixed inset-0 z-40"
+                       onClick={() => setIsProfileOpen(false)}
+                     />
+-                    <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl border border-secondary-200 shadow-lg py-2 z-50 animate-slide-down">
++                    <div className="absolute right-0 top-full mt-2 w-[calc(100vw-2rem)] max-w-56 bg-white rounded-xl border border-secondary-200 shadow-lg py-2 z-50 animate-slide-down">
+                       <div className="px-4 py-2 border-b border-secondary-100">
+                         <p className="text-sm font-medium text-secondary-800">{profile?.full_name}</p>
+                         <p className="text-xs text-secondary-500">{profile?.email}</p>
+diff --git a/src/contexts/AuthContext.tsx b/src/contexts/AuthContext.tsx
+index 219a950..a74e391 100644
+--- a/src/contexts/AuthContext.tsx
++++ b/src/contexts/AuthContext.tsx
+@@ -38,6 +38,10 @@ interface AuthContextType {
+   signUp: (
+     email: string,
+     password: string,
++    role: 'student' | 'organization'
++  ) => Promise<{ error: string | null; needsEmailConfirmation: boolean }>;
++
++  completeOnboarding: (
+     fullName: string,
+     role: 'student' | 'organization',
+     extra?: SignUpExtra
+@@ -150,169 +154,147 @@ export function AuthProvider({
+     async (
+       email: string,
+       password: string,
+-      fullName: string,
+-      role: 'student' | 'organization',
+-      extra?: SignUpExtra
+-    ): Promise<{ error: string | null }> => {
++      role: 'student' | 'organization'
++    ): Promise<{ error: string | null; needsEmailConfirmation: boolean }> => {
+       setError(null);
+       setLoading(true);
+ 
+       try {
+-        const normalizedEmail = email
+-          .trim()
+-          .toLowerCase();
+-
+-        const normalizedFullName = fullName.trim();
+-
+-        if (
+-          !normalizedEmail ||
+-          !password ||
+-          !normalizedFullName
+-        ) {
+-          const message =
+-            'All fields are required';
++        const normalizedEmail = email.trim().toLowerCase();
+ 
++        if (!normalizedEmail || !password) {
++          const message = 'Email and password are required';
+           setError(message);
+-
+-          return {
+-            error: message,
+-          };
++          return { error: message, needsEmailConfirmation: false };
+         }
+ 
+         if (password.length < 6) {
+-          const message =
+-            'Password must be at least 6 characters';
+-
++          const message = 'Password must be at least 6 characters';
+           setError(message);
+-
+-          return {
+-            error: message,
+-          };
++          return { error: message, needsEmailConfirmation: false };
+         }
+ 
+-        /*
+-         * Email confirmation is intentionally not handled.
+-         * Supabase email confirmation is disabled for this MVP.
+-         */
+-
+-        const {
+-          data: authData,
+-          error: signUpError,
+-        } = await supabase.auth.signUp({
++        const { data: authData, error: signUpError } = await supabase.auth.signUp({
+           email: normalizedEmail,
+           password,
++          options: {
++            data: { pending_role: role },
++            emailRedirectTo: `${window.location.origin}/onboarding`,
++          },
+         });
+ 
+         if (signUpError) {
+           setError(signUpError.message);
++          return { error: signUpError.message, needsEmailConfirmation: false };
++        }
+ 
+-          return {
+-            error: signUpError.message,
+-          };
++        // If Supabase email confirmation is enabled, signUp() returns a user
++        // but no session — the user must click the emailed link before they
++        // can do anything that requires auth.uid() (like inserting a profile row).
++        const needsEmailConfirmation = !authData.session;
++
++        if (authData.session && authData.user) {
++          await loadProfile(authData.user.id, authData.user.email ?? normalizedEmail);
+         }
+ 
+-        const newUserId = authData.user?.id;
++        return { error: null, needsEmailConfirmation };
++      } catch (err) {
++        console.error('Unexpected signup error:', err);
++        const message = err instanceof Error ? err.message : 'Something went wrong during signup.';
++        setError(message);
++        return { error: message, needsEmailConfirmation: false };
++      } finally {
++        setLoading(false);
++      }
++    },
++    [loadProfile]
++  );
++
++  const completeOnboarding = useCallback(
++    async (
++      fullName: string,
++      role: 'student' | 'organization',
++      extra?: SignUpExtra
++    ): Promise<{ error: string | null }> => {
++      setError(null);
++      setLoading(true);
+ 
+-        if (!newUserId) {
+-          const message =
+-            'Could not create user. Please try again.';
++      try {
++        const {
++          data: { user: currentUser },
++        } = await supabase.auth.getUser();
+ 
++        if (!currentUser) {
++          const message = 'Your session has expired. Please sign in again.';
+           setError(message);
++          return { error: message };
++        }
+ 
+-          return {
+-            error: message,
+-          };
++        const normalizedFullName = fullName.trim();
++        const normalizedEmail = (currentUser.email ?? '').toLowerCase();
++
++        if (!normalizedFullName) {
++          const message = 'Full name is required';
++          setError(message);
++          return { error: message };
+         }
+ 
+-        const { error: profileError } =
+-          await supabase.from('profiles').insert({
+-            id: newUserId,
+-            email: normalizedEmail,
+-            full_name: normalizedFullName,
+-            role,
+-          });
++        const { error: profileError } = await supabase.from('profiles').insert({
++          id: currentUser.id,
++          email: normalizedEmail,
++          full_name: normalizedFullName,
++          role,
++        });
+ 
+         if (profileError) {
+           setError(profileError.message);
+-
+-          return {
+-            error: profileError.message,
+-          };
++          return { error: profileError.message };
+         }
+ 
+         if (role === 'organization') {
+-          const { error: organizationError } =
+-            await supabase.from('organizations').insert({
+-              profile_id: newUserId,
+-              name: normalizedFullName,
+-              industry: extra?.industry || null,
+-              cac_number: extra?.cac_number || null,
+-              contact_name: extra?.contact_name || null,
+-              state: extra?.state || null,
+-              city: extra?.city || null,
+-              description: extra?.description || null,
+-              website: extra?.website || null,
+-              address: extra?.address || null,
+-              is_verified: false,
+-            });
++          const { error: organizationError } = await supabase.from('organizations').insert({
++            profile_id: currentUser.id,
++            name: normalizedFullName,
++            industry: extra?.industry || null,
++            cac_number: extra?.cac_number || null,
++            contact_name: extra?.contact_name || null,
++            state: extra?.state || null,
++            city: extra?.city || null,
++            description: extra?.description || null,
++            website: extra?.website || null,
++            address: extra?.address || null,
++            is_verified: false,
++          });
+ 
+           if (organizationError) {
+-            setError(
+-              organizationError.message
+-            );
+-
+-            return {
+-              error: organizationError.message,
+-            };
++            setError(organizationError.message);
++            return { error: organizationError.message };
+           }
+         }
+ 
+         if (role === 'student') {
+-          const { error: studentError } =
+-            await supabase.from('students').insert({
+-              profile_id: newUserId,
+-              institution:
+-                extra?.institution || '',
+-              matric_number:
+-                extra?.matric_number || null,
+-              department:
+-                extra?.department || null,
+-              skills: [],
+-            });
++          const { error: studentError } = await supabase.from('students').insert({
++            profile_id: currentUser.id,
++            institution: extra?.institution || '',
++            matric_number: extra?.matric_number || null,
++            department: extra?.department || null,
++            skills: [],
++          });
+ 
+           if (studentError) {
+             setError(studentError.message);
+-
+-            return {
+-              error: studentError.message,
+-            };
++            return { error: studentError.message };
+           }
+         }
+ 
+-        await loadProfile(
+-          newUserId,
+-          normalizedEmail
+-        );
++        await loadProfile(currentUser.id, normalizedEmail);
+ 
+-        return {
+-          error: null,
+-        };
++        return { error: null };
+       } catch (err) {
+-        console.error(
+-          'Unexpected signup error:',
+-          err
+-        );
+-
+-        const message =
+-          err instanceof Error
+-            ? err.message
+-            : 'Something went wrong during signup.';
+-
++        console.error('Unexpected onboarding error:', err);
++        const message = err instanceof Error ? err.message : 'Something went wrong completing your profile.';
+         setError(message);
+-
+-        return {
+-          error: message,
+-        };
++        return { error: message };
+       } finally {
+         setLoading(false);
+       }
+@@ -410,6 +392,7 @@ export function AuthProvider({
+         loading,
+         error,
+         signUp,
++        completeOnboarding,
+         signIn,
+         signOut,
+       }}
+diff --git a/src/index.css b/src/index.css
+index 77ef5f0..9991f43 100644
+--- a/src/index.css
++++ b/src/index.css
+@@ -7,10 +7,17 @@
+ @layer base {
+   html {
+     @apply scroll-smooth;
++    overflow-x: hidden;
+   }
+ 
+   body {
+     @apply font-sans text-secondary-800 bg-white antialiased;
++    overflow-x: hidden;
++    max-width: 100vw;
++  }
++
++  #root {
++    overflow-x: hidden;
+   }
+ 
+   h1, h2, h3, h4, h5, h6 {
+diff --git a/src/pages/AuthPage.tsx b/src/pages/AuthPage.tsx
+index da92caf..9112ef1 100644
+--- a/src/pages/AuthPage.tsx
++++ b/src/pages/AuthPage.tsx
+@@ -1,90 +1,26 @@
+ import { useState, useEffect } from 'react';
+ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+-import { GraduationCap, Eye, EyeOff, ArrowLeft } from 'lucide-react';
++import { GraduationCap, Eye, EyeOff, ArrowLeft, MailCheck, Rocket, Building2 } from 'lucide-react';
+ import { Button, Input } from '../components/ui';
+ import { useAuth } from '../contexts/AuthContext';
+ import { supabase } from '../lib/supabase';
+ 
+ type AuthMode = 'signin' | 'signup';
+ 
+-interface StateData {
+-  state: string;
+-  cities: string[];
+-}
+-
+-const NIGERIA_STATES: StateData[] = [
+-  { state: 'Abia', cities: ['Umuahia', 'Aba', 'Arochukwu', 'Ohafia'] },
+-  { state: 'Adamawa', cities: ['Yola', 'Mubi', 'Jimeta', 'Numan'] },
+-  { state: 'Akwa Ibom', cities: ['Uyo', 'Eket', 'Ikot Ekpene', 'Oron'] },
+-  { state: 'Anambra', cities: ['Awka', 'Onitsha', 'Nnewi', 'Ekwulobia'] },
+-  { state: 'Bauchi', cities: ['Bauchi', 'Azare', 'Misau', 'Ningi'] },
+-  { state: 'Bayelsa', cities: ['Yenagoa', 'Brass', 'Sagbama', 'Ogbia'] },
+-  { state: 'Benue', cities: ['Makurdi', 'Gboko', 'Otukpo', 'Katsina-Ala'] },
+-  { state: 'Borno', cities: ['Maiduguri', 'Biu', 'Bama', 'Dikwa'] },
+-  { state: 'Cross River', cities: ['Calabar', 'Ugep', 'Ikom', 'Ogoja'] },
+-  { state: 'Delta', cities: ['Asaba', 'Warri', 'Sapele', 'Ughelli'] },
+-  { state: 'Ebonyi', cities: ['Abakaliki', 'Afikpo', 'Onueke', 'Ezza'] },
+-  { state: 'Edo', cities: ['Benin City', 'Auchi', 'Ekpoma', 'Uromi'] },
+-  { state: 'Ekiti', cities: ['Ado-Ekiti', 'Ikere-Ekiti', 'Ise-Ekiti', 'Oye-Ekiti'] },
+-  { state: 'Enugu', cities: ['Enugu', 'Nsukka', 'Oji River', 'Awgu'] },
+-  { state: 'FCT (Abuja)', cities: ['Abuja Municipal', 'Gwagwalada', 'Kuje', 'Bwari', 'Kubwa'] },
+-  { state: 'Gombe', cities: ['Gombe', 'Kaltungo', 'Billiri', 'Dukku'] },
+-  { state: 'Imo', cities: ['Owerri', 'Orlu', 'Okigwe', 'Mbaise'] },
+-  { state: 'Jigawa', cities: ['Dutse', 'Hadejia', 'Gumel', 'Birnin Kudu'] },
+-  { state: 'Kaduna', cities: ['Kaduna', 'Zaria', 'Kafanchan', 'Kagoro'] },
+-  { state: 'Kano', cities: ['Kano', 'Wudil', 'Rano', 'Gwarzo'] },
+-  { state: 'Katsina', cities: ['Katsina', 'Funtua', 'Daura', 'Malumfashi'] },
+-  { state: 'Kebbi', cities: ['Birnin Kebbi', 'Argungu', 'Yauri', 'Zuru'] },
+-  { state: 'Kogi', cities: ['Lokoja', 'Okene', 'Kabba', 'Idah'] },
+-  { state: 'Kwara', cities: ['Ilorin', 'Offa', 'Omu-Aran', 'Patigi'] },
+-  { state: 'Lagos', cities: ['Lagos Island', 'Ikeja', 'Lekki', 'Surulere', 'Badagry', 'Epe'] },
+-  { state: 'Nasarawa', cities: ['Lafia', 'Keffi', 'Akwanga', 'Nasarawa'] },
+-  { state: 'Niger', cities: ['Minna', 'Bida', 'Suleja', 'Kontagora'] },
+-  { state: 'Ogun', cities: ['Abeokuta', 'Sagamu', 'Ijebu Ode', 'Ota'] },
+-  { state: 'Ondo', cities: ['Akure', 'Ondo City', 'Owo', 'Ikare-Akoko'] },
+-  { state: 'Osun', cities: ['Osogbo', 'Ile-Ife', 'Ilesa', 'Ede'] },
+-  { state: 'Oyo', cities: ['Ibadan', 'Ogbomoso', 'Oyo Town', 'Saki'] },
+-  { state: 'Plateau', cities: ['Jos', 'Bukuru', 'Pankshin', 'Shendam'] },
+-  { state: 'Rivers', cities: ['Port Harcourt', 'Bonny', 'Eleme', 'Ahoada'] },
+-  { state: 'Sokoto', cities: ['Sokoto', 'Tambuwal', 'Wurno', 'Gwadabawa'] },
+-  { state: 'Taraba', cities: ['Jalingo', 'Wukari', 'Bali', 'Gembu'] },
+-  { state: 'Yobe', cities: ['Damaturu', 'Potiskum', 'Gashua', 'Nguru'] },
+-  { state: 'Zamfara', cities: ['Gusau', 'Kaura Namoda', 'Talata Mafara', 'Anka'] },
+-];
+-
+-const getCitiesForState = (stateName: string): string[] => {
+-  const found = NIGERIA_STATES.find((s) => s.state === stateName);
+-  return found ? found.cities : [];
+-};
+-
+ export function AuthPage() {
+   const [searchParams] = useSearchParams();
+   const navigate = useNavigate();
+   const { user, profile, signIn, signUp, loading: authLoading, error: authError } = useAuth();
+ 
+   const [mode, setMode] = useState<AuthMode>('signin');
++  const [roleChosen, setRoleChosen] = useState(false);
+   const [email, setEmail] = useState('');
+   const [password, setPassword] = useState('');
+-  const [fullName, setFullName] = useState('');
+   const [role, setRole] = useState<'student' | 'organization'>('student');
+   const [showPassword, setShowPassword] = useState(false);
+   const [loading, setLoading] = useState(false);
+   const [error, setError] = useState<string | null>(null);
+-
+-  const [institution, setInstitution] = useState('');
+-  const [matricNumber, setMatricNumber] = useState('');
+-  const [department, setDepartment] = useState('');
+-  const [fieldOfStudy, setFieldOfStudy] = useState('');
+-  const [industry, setIndustry] = useState('');
+-  const [cacNumber, setCacNumber] = useState('');
+-  const [contactName, setContactName] = useState('');
+-  const [state, setState] = useState('');
+-  const [city, setCity] = useState('');
+-  const [description, setDescription] = useState('');
+-  const [website, setWebsite] = useState('');
+-  const [address, setAddress] = useState('');
+-
+-  const availableCities = getCitiesForState(state);
++  const [awaitingEmailConfirmation, setAwaitingEmailConfirmation] = useState(false);
+ 
+   useEffect(() => {
+     const modeParam = searchParams.get('mode');
+@@ -93,22 +29,28 @@ export function AuthPage() {
+     if (modeParam === 'signup') setMode('signup');
+     if (roleParam === 'organization' || roleParam === 'student') {
+       setRole(roleParam);
++      setRoleChosen(true);
+       setMode('signup');
+     }
+   }, [searchParams]);
+ 
+-useEffect(() => {
+-  if (user) {
+-    const finalRole = profile?.role || role;
+-    if (finalRole === 'admin') {
+-      navigate('/dashboard/admin');
+-    } else if (finalRole === 'organization') {
+-      navigate('/dashboard/organization');
+-    } else {
+-      navigate('/dashboard/student');
++  useEffect(() => {
++    if (!user || awaitingEmailConfirmation) return;
++
++    if (profile) {
++      if (profile.role === 'admin') {
++        navigate('/dashboard/admin');
++      } else if (profile.role === 'organization') {
++        navigate('/dashboard/organization');
++      } else {
++        navigate('/dashboard/student');
++      }
++    } else if (!authLoading) {
++      // User is signed in (email confirmation not required, or already confirmed)
++      // but hasn't filled in their profile details yet.
++      navigate('/onboarding');
+     }
+-  }
+-}, [user, profile, role, navigate]);
++  }, [user, profile, authLoading, awaitingEmailConfirmation, navigate]);
+ 
+   const handleSubmit = async (e: React.FormEvent) => {
+     e.preventDefault();
+@@ -122,24 +64,15 @@ useEffect(() => {
+           setError(result.error);
+         }
+       } else {
+-const result = await signUp(email, password, fullName, role, {
+-          institution,
+-          matric_number: matricNumber,
+-          department: fieldOfStudy,
+-          industry,
+-          cac_number: cacNumber,
+-          contact_name: contactName,
+-          state,
+-          city,
+-          description,
+-          website,
+-          address,
+-        });
++        const result = await signUp(email, password, role);
+         if (result.error) {
+           setError(result.error);
++        } else if (result.needsEmailConfirmation) {
++          setAwaitingEmailConfirmation(true);
+         }
++        // If confirmation isn't required, the useEffect above will redirect to /onboarding.
+       }
+-    } catch (err) {
++    } catch {
+       setError('An unexpected error occurred');
+     } finally {
+       setLoading(false);
+@@ -147,7 +80,10 @@ const result = await signUp(email, password, fullName, role, {
+   };
+ 
+   const toggleMode = () => {
+-    setMode(mode === 'signin' ? 'signup' : 'signin');
++    const nextMode = mode === 'signin' ? 'signup' : 'signin';
++    setMode(nextMode);
++    if (nextMode === 'signup') setRoleChosen(false);
++    setAwaitingEmailConfirmation(false);
+     setError(null);
+   };
+ 
+@@ -158,13 +94,15 @@ const result = await signUp(email, password, fullName, role, {
+       </div>
+     );
+   }
++
+   return (
+     <div className="min-h-screen flex flex-col bg-secondary-50">
+       <div className="w-full bg-gradient-to-br from-primary-600 to-primary-900 p-6 sm:p-8 md:p-12 text-white relative overflow-hidden flex flex-col justify-center items-center text-center border-b-4 border-primary-500 shadow-sm">
+         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.1),transparent)]" />
+         <div className="max-w-xl relative z-10 space-y-3">
+-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-xs sm:text-sm font-medium">
+-            <span>🚀 3MTT Knowledge Showcase 2.0</span>
++          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-xs sm:text-sm font-medium">
++            <Rocket className="w-3.5 h-3.5" />
++            <span>3MTT Knowledge Showcase 2.0</span>
+           </div>
+           <h2 className="font-heading text-xl sm:text-2xl md:text-3xl font-bold leading-tight">
+             Empowering the next generation of Nigerian Tech Talent.
+@@ -190,284 +128,147 @@ const result = await signUp(email, password, fullName, role, {
+             </span>
+           </div>
+ 
+-          <div className="mb-6">
+-            <h1 className="font-heading text-xl font-bold text-secondary-900 mb-1">
+-              {mode === 'signin' ? 'Welcome back' : 'Create your account'}
+-            </h1>
+-            <p className="text-xs sm:text-sm text-secondary-500">
+-              {mode === 'signin' ? 'Sign in to access your secure portal.' : 'Join thousands of students and host organizations across Nigeria.'}
+-            </p>
+-          </div>
+-
+-          <form onSubmit={handleSubmit} className="space-y-4">
+-            {mode === 'signup' && role === 'student' && (
+-              <div className="space-y-4 border-l-2 border-green-600 pl-3 bg-secondary-50/50 p-3 rounded-r-xl">
+-               <Input label="Full Name" type="text" placeholder="Musa Ibrahim" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
+-                <div>
+-                  <label className="block text-xs font-semibold text-secondary-700 mb-1">Field of Study</label>
+-                  <select
+-                    required
+-                    value={fieldOfStudy}
+-                    onChange={(e) => setFieldOfStudy(e.target.value)}
+-                    className="w-full px-3 py-2.5 rounded-xl border border-secondary-200 bg-white text-secondary-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+-                  >
+-                    <option value="">Select your field</option>
+-                    <option value="engineering">Engineering & Technology</option>
+-                    <option value="environmental">Environmental Sciences (Architecture, Estate Mgmt, Surveying)</option>
+-                    <option value="sciences">Sciences (Computer Science, Biochemistry, Microbiology, etc.)</option>
+-                    <option value="agriculture">Agriculture</option>
+-                    <option value="medical">Medical & Health Sciences</option>
+-                    <option value="education">Education</option>
+-                    <option value="arts_design">Arts & Design</option>
+-                    <option value="hospitality">Hospitality & Management</option>
+-                    <option value="mass_comm">Mass Communication & Media</option>
+-                    <option value="veterinary">Veterinary Medicine</option>
+-                  </select>
+-                </div>
+-                <div>
+-                  <label className="block text-xs font-semibold text-secondary-700 mb-1">Matriculation Number</label>
+-                  <input
+-                    type="text"
+-                    placeholder="e.g. 2021/123456"
+-                    value={matricNumber}
+-                    onChange={(e) => setMatricNumber(e.target.value)}
+-                    required
+-                    className="w-full px-3 py-2.5 rounded-xl border border-secondary-200 bg-white text-secondary-800 placeholder-secondary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 text-sm transition-all"
+-                  />
+-                </div>
+-                <div>
+-                  <label className="block text-xs font-semibold text-secondary-700 mb-1">Name of Institution</label>
+-                  <input
+-                    type="text"
+-                    placeholder="e.g. University of Nigeria"
+-                    value={institution}
+-                    onChange={(e) => setInstitution(e.target.value)}
+-                    required
+-                    className="w-full px-3 py-2.5 rounded-xl border border-secondary-200 bg-white text-secondary-800 placeholder-secondary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 text-sm transition-all"
+-                  />
+-                </div>
+-                {/* Add this after the institution input, still inside the student signup block */}
+-              <div>
+-                <label className="block text-xs font-semibold text-secondary-700 mb-1">
+-                  State of Institution
+-                </label>
+-                <select
+-                  value={state}
+-                  onChange={(e) => setState(e.target.value)}
+-                  required
+-                  className="w-full px-3 py-2.5 rounded-xl border border-secondary-200 
+-                    bg-white text-secondary-800 text-sm focus:outline-none 
+-                    focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+-                >
+-                  <option value="">Select state</option>
+-                  {NIGERIA_STATES.map((s) => (
+-                    <option key={s.state} value={s.state}>
+-                      {s.state}
+-                    </option>
+-                  ))}
+-                </select>
++          {awaitingEmailConfirmation ? (
++            <div className="text-center py-4">
++              <div className="w-14 h-14 rounded-full bg-primary-50 flex items-center justify-center mx-auto mb-4">
++                <MailCheck className="w-7 h-7 text-primary-600" />
+               </div>
++              <h1 className="font-heading text-xl font-bold text-secondary-900 mb-2">Check your email</h1>
++              <p className="text-sm text-secondary-500 mb-6">
++                We've sent a confirmation link to <span className="font-medium text-secondary-800">{email}</span>.
++                Click the link to verify your account, then you'll be taken to finish setting up your profile.
++              </p>
++              <button
++                type="button"
++                onClick={() => {
++                  setAwaitingEmailConfirmation(false);
++                  setMode('signin');
++                }}
++                className="text-primary-600 hover:text-primary-700 text-sm font-semibold"
++              >
++                Back to sign in
++              </button>
++            </div>
++          ) : (
++            <>
++              <div className="mb-6">
++                <h1 className="font-heading text-xl font-bold text-secondary-900 mb-1">
++                  {mode === 'signin' ? 'Welcome back' : roleChosen ? (role === 'student' ? 'Create your student account' : 'Register your organization') : 'Create your account'}
++                </h1>
++                <p className="text-xs sm:text-sm text-secondary-500">
++                  {mode === 'signin' ? 'Sign in to access your secure portal.' : 'Join thousands of students and host organizations across Nigeria.'}
++                </p>
+               </div>
+-            )}
+-
+-            {mode === 'signup' && role === 'organization' && (
+-              <div className="space-y-4 border-l-2 border-primary-500 pl-3 bg-secondary-50/50 p-3 rounded-r-xl">
+-                <Input label="Company / Host Organization Name" type="text" placeholder="e.g. Innoson Motors or TechCorp" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
+ 
+-                <div>
+-                  <label className="block text-xs font-semibold text-secondary-700 mb-1">Corporate CAC RC Number</label>
+-                  <input
+-                    type="text"
+-                    placeholder="RC-1234567"
+-                    value={cacNumber}
+-                    onChange={(e) => setCacNumber(e.target.value)}
+-                    required
+-                    className="w-full px-3 py-2.5 rounded-xl border border-secondary-200 bg-white text-secondary-800 placeholder-secondary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 text-sm transition-all"
+-                  />
+-                </div>
+-
+-                <div>
+-                  <label className="block text-xs font-semibold text-secondary-700 mb-1">Street Address (optional)</label>
+-                  <input
+-                    type="text"
+-                    placeholder="e.g. 15 Industrial Layout Road"
+-                    value={address}
+-                    onChange={(e) => setAddress(e.target.value)}
+-                    className="w-full px-3 py-2.5 rounded-xl border border-secondary-200 bg-white text-secondary-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+-                  />
++              {mode === 'signup' && !roleChosen ? (
++                <div className="space-y-3">
++                  <p className="text-xs font-semibold text-secondary-700 mb-1">I want to sign up as a:</p>
++                  <button
++                    type="button"
++                    onClick={() => { setRole('student'); setRoleChosen(true); }}
++                    className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-secondary-200 hover:border-primary-500 hover:bg-primary-50/50 transition-all text-left"
++                  >
++                    <div className="w-11 h-11 rounded-xl bg-green-100 flex items-center justify-center flex-shrink-0">
++                      <GraduationCap className="w-5 h-5 text-green-700" />
++                    </div>
++                    <div>
++                      <p className="font-semibold text-secondary-900 text-sm">Student</p>
++                      <p className="text-xs text-secondary-500">Find and apply for verified SIWES placements</p>
++                    </div>
++                  </button>
++                  <button
++                    type="button"
++                    onClick={() => { setRole('organization'); setRoleChosen(true); }}
++                    className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-secondary-200 hover:border-primary-500 hover:bg-primary-50/50 transition-all text-left"
++                  >
++                    <div className="w-11 h-11 rounded-xl bg-primary-100 flex items-center justify-center flex-shrink-0">
++                      <Building2 className="w-5 h-5 text-primary-700" />
++                    </div>
++                    <div>
++                      <p className="font-semibold text-secondary-900 text-sm">Host Organization</p>
++                      <p className="text-xs text-secondary-500">Post SIWES openings and manage trainees</p>
++                    </div>
++                  </button>
+                 </div>
+-
+-                <div className="grid grid-cols-2 gap-3">
+-                  <div>
+-                    <label className="block text-[11px] font-semibold text-secondary-700 mb-1">State</label>
+-                    <select
+-                      required
+-                      value={state}
+-                      onChange={(e) => {
+-                        setState(e.target.value);
+-                        setCity('');
+-                      }}
+-                      className="w-full px-2.5 py-2.5 rounded-xl border border-secondary-200 bg-white text-secondary-800 text-xs focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
++              ) : (
++                <form onSubmit={handleSubmit} className="space-y-4">
++                  {mode === 'signup' && (
++                    <button
++                      type="button"
++                      onClick={() => setRoleChosen(false)}
++                      className="inline-flex items-center gap-1.5 text-xs text-secondary-500 hover:text-primary-600 mb-1"
+                     >
+-                      <option value="">Select state</option>
+-                      {NIGERIA_STATES.map((s) => (
+-                        <option key={s.state} value={s.state}>
+-                          {s.state}
+-                        </option>
+-                      ))}
+-                    </select>
+-                  </div>
+-                  <div>
+-                    <label className="block text-[11px] font-semibold text-secondary-700 mb-1">City</label>
+-                    <select
+-                      required
+-                      value={city}
+-                      onChange={(e) => setCity(e.target.value)}
+-                      disabled={!state}
+-                      className="w-full px-2.5 py-2.5 rounded-xl border border-secondary-200 bg-white text-secondary-800 text-xs focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 disabled:bg-secondary-100 disabled:text-secondary-400"
+-                    >
+-                      <option value="">{state ? 'Select city' : 'Select state first'}</option>
+-                      {availableCities.map((c) => (
+-                        <option key={c} value={c}>
+-                          {c}
+-                        </option>
+-                      ))}
+-                    </select>
+-                  </div>
+-                </div>
++                      <ArrowLeft className="w-3.5 h-3.5" />
++                      {role === 'student' ? 'Signing up as Student' : 'Signing up as Host Organization'} — change
++                    </button>
++                  )}
++
++                  <Input label="Email Address" type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
+ 
+-                <div className="grid grid-cols-2 gap-3">
+-                  <div>
+-                    <label className="block text-[11px] font-semibold text-secondary-700 mb-1">Primary Sector</label>
+-                    <select
+-                      required
+-                      value={industry}
+-                      onChange={(e) => setIndustry(e.target.value)}
+-                      className="w-full px-2.5 py-2.5 rounded-xl border border-secondary-200 bg-white text-secondary-800 text-xs focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+-                    >
+-                      <option value="">Select sector</option>
+-                      <option value="engineering">Engineering & Technology</option>
+-                      <option value="environmental">Environmental Sciences</option>
+-                      <option value="sciences">Sciences</option>
+-                      <option value="agriculture">Agriculture</option>
+-                      <option value="medical">Medical & Health Sciences</option>
+-                      <option value="education">Education</option>
+-                      <option value="arts_design">Arts & Design</option>
+-                      <option value="hospitality">Hospitality & Management</option>
+-                      <option value="mass_comm">Mass Communication & Media</option>
+-                      <option value="veterinary">Veterinary Medicine</option>
+-                    </select>
+-                  </div>
+                   <div>
+-                    <label className="block text-[11px] font-semibold text-secondary-700 mb-1">SIWES Vacancies</label>
+-                    <select required className="w-full px-2.5 py-2.5 rounded-xl border border-secondary-200 bg-white text-secondary-800 text-xs focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500">
+-                      <option value="1-2">1 - 2 Openings</option>
+-                      <option value="3-5">3 - 5 Openings</option>
+-                      <option value="6+">More than 5 slots</option>
+-                    </select>
++                    <label className="block text-xs font-semibold text-secondary-700 mb-1">Password</label>
++                    <div className="relative">
++                      <input type={showPassword ? 'text' : 'password'} placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} className="w-full px-3 py-2.5 rounded-xl border border-secondary-200 bg-white text-secondary-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 pr-10 transition-all" />
++                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-secondary-400 hover:text-secondary-600 z-10">
++                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
++                      </button>
++                    </div>
+                   </div>
+-                </div>
+-
+-<div>
+-                  <label className="block text-xs font-semibold text-secondary-700 mb-1">HR Representative / Contact Name</label>
+-                  <input
+-                    type="text"
+-                    placeholder="Enter officer name"
+-                    value={contactName}
+-                    onChange={(e) => setContactName(e.target.value)}
+-                    required
+-                    className="w-full px-3 py-2.5 rounded-xl border border-secondary-200 bg-white text-secondary-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+-                  />
+-                </div>
+-
+-                <div>
+-                  <label className="block text-xs font-semibold text-secondary-700 mb-1">Company Description (optional)</label>
+-                  <textarea
+-                    rows={3}
+-                    placeholder="Briefly describe what your organization does and what trainees can expect to learn."
+-                    value={description}
+-                    onChange={(e) => setDescription(e.target.value)}
+-                    className="w-full px-3 py-2.5 rounded-xl border border-secondary-200 bg-white text-secondary-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+-                  />
+-                </div>
+-
+-                <div>
+-                  <label className="block text-xs font-semibold text-secondary-700 mb-1">Company Website (optional)</label>
+-                  <input
+-                    type="url"
+-                    placeholder="https://yourcompany.com"
+-                    value={website}
+-                    onChange={(e) => setWebsite(e.target.value)}
+-                    className="w-full px-3 py-2.5 rounded-xl border border-secondary-200 bg-white text-secondary-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+-                  />
+-                </div>
+-              </div>
+-            )}
+-
+-            <Input label="Email Address" type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
+ 
+-            <div>
+-              <label className="block text-xs font-semibold text-secondary-700 mb-1">Password</label>
+-              <div className="relative">
+-                <input type={showPassword ? 'text' : 'password'} placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} className="w-full px-3 py-2.5 rounded-xl border border-secondary-200 bg-white text-secondary-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 pr-10 transition-all" />
+-                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-secondary-400 hover:text-secondary-600 z-10">
+-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+-                </button>
+-              </div>
+-            </div>
+-
+-            {mode === 'signup' && (
+-              <div>
+-                <label className="block text-xs font-semibold text-secondary-700 mb-1.5">I am onboarding as a:</label>
+-                <div className="grid grid-cols-2 gap-2.5">
+-                  <button type="button" onClick={() => setRole('student')} className={`px-3 py-2 rounded-xl border-2 text-xs font-medium transition-all ${role === 'student' ? 'border-primary-500 bg-primary-50 text-primary-700 font-semibold' : 'border-secondary-200 text-secondary-600'}`}>Student</button>
+-                  <button type="button" onClick={() => setRole('organization')} className={`px-3 py-2 rounded-xl border-2 text-xs font-medium transition-all ${role === 'organization' ? 'border-primary-500 bg-primary-50 text-primary-700 font-semibold' : 'border-secondary-200 text-secondary-600'}`}>Host Org</button>
+-                </div>
+-              </div>
+-            )}
+-
+-            {(error || authError) && (
+-              <div className="p-3 rounded-xl bg-error-50 border border-error-200">
+-                <p className="text-xs text-error-700">{error || authError}</p>
++                  {mode === 'signup' && (
++                    <div className="pt-1">
++                      <p className="text-[11px] text-secondary-400">
++                        Signing up as <span className="font-semibold text-secondary-600">{role === 'student' ? 'Student' : 'Host Organization'}</span>.
++                        You'll fill in the rest of your details after verifying your email.
++                      </p>
++                    </div>
++                  )}
++
++                  {(error || authError) && (
++                    <div className="p-3 rounded-xl bg-error-50 border border-error-200">
++                      <p className="text-xs text-error-700">{error || authError}</p>
++                    </div>
++                  )}
++
++                  <Button type="submit" className="w-full bg-primary-600 hover:bg-primary-700 text-white font-medium" size="lg" isLoading={loading}>
++                    {mode === 'signin' ? 'Sign In' : 'Create Account'}
++                  </Button>
++                </form>
++              )}
++
++              <div className="mt-5 text-center text-xs sm:text-sm space-y-2">
++                <p className="text-secondary-500">
++                  {mode === 'signin' ? "Don't have an account?" : 'Already have an account?'}{' '}
++                  <button type="button" onClick={toggleMode} className="text-primary-600 hover:text-primary-700 font-bold ml-0.5">
++                    {mode === 'signin' ? 'Sign up' : 'Sign in'}
++                  </button>
++                </p>
++                {mode === 'signin' && (
++                  <button
++                    type="button"
++                    onClick={async () => {
++                      if (!email) {
++                        setError('Enter your email above first, then click "Forgot password?" again.');
++                        return;
++                      }
++                      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
++                        redirectTo: `${window.location.origin}/auth/reset-password`,
++                      });
++                      if (resetError) {
++                        setError(resetError.message);
++                      } else {
++                        setError(null);
++                        alert('Password reset link sent! Check your email.');
++                      }
++                    }}
++                    className="text-secondary-400 hover:text-primary-600 underline"
++                  >
++                    Forgot password?
++                  </button>
++                )}
+               </div>
+-            )}
+-
+-            <Button type="submit" className="w-full bg-primary-600 hover:bg-primary-700 text-white font-medium" size="lg" isLoading={loading}>
+-              {mode === 'signin' ? 'Sign In' : 'Create Account'}
+-            </Button>
+-          </form>
+-
+-          <div className="mt-5 text-center text-xs sm:text-sm space-y-2">
+-            <p className="text-secondary-500">
+-              {mode === 'signin' ? "Don't have an account?" : 'Already have an account?'}{' '}
+-              <button type="button" onClick={toggleMode} className="text-primary-600 hover:text-primary-700 font-bold ml-0.5">
+-                {mode === 'signin' ? 'Sign up' : 'Sign in'}
+-              </button>
+-            </p>
+-            {mode === 'signin' && (
+-              <button
+-                type="button"
+-                onClick={async () => {
+-                  if (!email) {
+-                    setError('Enter your email above first, then click "Forgot password?" again.');
+-                    return;
+-                  }
+-                  const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+-                    redirectTo: `${window.location.origin}/auth/reset-password`,
+-                  });
+-                  if (resetError) {
+-                    setError(resetError.message);
+-                  } else {
+-                    setError(null);
+-                    alert('Password reset link sent! Check your email.');
+-                  }
+-                }}
+-                className="text-secondary-400 hover:text-primary-600 underline"
+-              >
+-                Forgot password?
+-              </button>
+-            )}
+-          </div>
++            </>
++          )}
+         </div>
+       </div>
+     </div>
+diff --git a/src/pages/DashboardPage.tsx b/src/pages/DashboardPage.tsx
+index b998fc0..e90106c 100644
+--- a/src/pages/DashboardPage.tsx
++++ b/src/pages/DashboardPage.tsx
+@@ -10,6 +10,8 @@ export function DashboardPage() {
+   useEffect(() => {
+     if (!loading && !user) {
+       navigate('/auth/signin');
++    } else if (!loading && user && !profile) {
++      navigate('/onboarding');
+     } else if (!loading && profile) {
+       if (profile.role === 'admin') {
+         navigate('/dashboard/admin');
+diff --git a/src/pages/HomePage.tsx b/src/pages/HomePage.tsx
+index 848c638..28a06de 100644
+--- a/src/pages/HomePage.tsx
++++ b/src/pages/HomePage.tsx
+@@ -1,13 +1,14 @@
+ import { Link } from 'react-router-dom';
+-import { GraduationCap, Search, CheckCircle2 } from 'lucide-react';
++import { GraduationCap, Search, CheckCircle2, ShieldCheck, Building2, NotebookPen, BarChart3, FileCheck2 } from 'lucide-react';
+ 
+ export function HomePage() {
+   return (
+     <div className="min-h-screen">
+       {/* SECTION 1: HERO */}
+       <section className="bg-gradient-to-br from-primary-700 to-primary-900 text-white py-20 px-6 text-center">
+-        <div className="inline-flex bg-white/10 border border-white/20 rounded-full text-xs px-3 py-1 mb-6">
+-          🛡️ Built for 3MTT Knowledge Showcase 2026 · ITF Official Program
++        <div className="inline-flex items-center gap-1.5 bg-white/10 border border-white/20 rounded-full text-xs px-3 py-1 mb-6">
++          <ShieldCheck className="w-3.5 h-3.5" />
++          Built for 3MTT Knowledge Showcase 2026 · ITF Official Program
+         </div>
+ 
+         <h1 className="font-heading text-4xl sm:text-5xl font-extrabold leading-tight max-w-3xl mx-auto">
+@@ -21,15 +22,15 @@ export function HomePage() {
+         <div className="flex gap-3 justify-center mt-8 flex-wrap">
+           <Link
+             to="/auth?role=student"
+-            className="bg-white text-primary-700 font-bold px-6 py-3 rounded-xl hover:bg-primary-50 transition-colors"
++            className="inline-flex items-center gap-2 bg-white text-primary-700 font-bold px-6 py-3 rounded-xl hover:bg-primary-50 transition-colors"
+           >
+-            🎓 I'm a Student
++            <GraduationCap className="w-4 h-4" /> I'm a Student
+           </Link>
+           <Link
+             to="/auth?role=organization"
+-            className="border-2 border-white/40 text-white px-6 py-3 rounded-xl hover:bg-white/10 font-medium transition-colors"
++            className="inline-flex items-center gap-2 border-2 border-white/40 text-white px-6 py-3 rounded-xl hover:bg-white/10 font-medium transition-colors"
+           >
+-            🏢 Register Organization
++            <Building2 className="w-4 h-4" /> Register Organization
+           </Link>
+         </div>
+ 
+@@ -116,28 +117,36 @@ export function HomePage() {
+ 
+         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-3xl mx-auto">
+           <div className="bg-secondary-50 rounded-2xl p-6 border border-secondary-200">
+-            <h3 className="font-semibold text-secondary-900 mb-2">✅ Verified Organizations Only</h3>
++            <h3 className="flex items-center gap-2 font-semibold text-secondary-900 mb-2">
++              <CheckCircle2 className="w-5 h-5 text-primary-600" /> Verified Organizations Only
++            </h3>
+             <p className="text-sm text-secondary-600">
+               Every host organization is reviewed by an admin before appearing in search. No fake placements, no wasted trips.
+             </p>
+           </div>
+ 
+           <div className="bg-secondary-50 rounded-2xl p-6 border border-secondary-200">
+-            <h3 className="font-semibold text-secondary-900 mb-2">📓 Digital SIWES Logbook</h3>
++            <h3 className="flex items-center gap-2 font-semibold text-secondary-900 mb-2">
++              <NotebookPen className="w-5 h-5 text-primary-600" /> Digital SIWES Logbook
++            </h3>
+             <p className="text-sm text-secondary-600">
+               Record your daily IT activities on your phone and use your SIWES Connect journal to accurately fill your institution's official paper logbook at the end of each day.
+             </p>
+           </div>
+ 
+           <div className="bg-secondary-50 rounded-2xl p-6 border border-secondary-200">
+-            <h3 className="font-semibold text-secondary-900 mb-2">📊 Real-Time Application Tracker</h3>
++            <h3 className="flex items-center gap-2 font-semibold text-secondary-900 mb-2">
++              <BarChart3 className="w-5 h-5 text-primary-600" /> Real-Time Application Tracker
++            </h3>
+             <p className="text-sm text-secondary-600">
+               Know exactly where each application stands — pending, under review, accepted, or rejected.
+             </p>
+           </div>
+ 
+           <div className="bg-secondary-50 rounded-2xl p-6 border border-secondary-200">
+-            <h3 className="font-semibold text-secondary-900 mb-2">📄 ITF-Compliant Process</h3>
++            <h3 className="flex items-center gap-2 font-semibold text-secondary-900 mb-2">
++              <FileCheck2 className="w-5 h-5 text-primary-600" /> ITF-Compliant Process
++            </h3>
+             <p className="text-sm text-secondary-600">
+               SIWES Connect follows the official ITF attachment process — from placement search to logbook submission.
+             </p>
+@@ -189,16 +198,10 @@ export function HomePage() {
+ 
+       {/* SECTION 6: FOOTER (thin bar only) */}
+       <footer className="bg-secondary-900 text-white py-4 px-6">
+-        <div className="flex flex-col sm:flex-row items-center justify-between gap-2 max-w-5xl mx-auto">
++        <div className="flex flex-col sm:flex-row items-center justify-center gap-2 max-w-5xl mx-auto">
+           <p className="text-secondary-400 text-xs">
+             © 2025 SIWES Connect Nigeria — Built for the 3MTT Knowledge Showcase. Powered by ITF SIWES Program.
+           </p>
+-          <Link
+-            to="/auth/signin"
+-            className="bg-secondary-800 hover:bg-secondary-700 text-white text-xs font-medium px-4 py-2 rounded-lg transition-colors"
+-          >
+-            Admin Portal →
+-          </Link>
+         </div>
+       </footer>
+     </div>
+diff --git a/src/pages/OnboardingPage.tsx b/src/pages/OnboardingPage.tsx
+new file mode 100644
+index 0000000..7132f9b
+--- /dev/null
++++ b/src/pages/OnboardingPage.tsx
+@@ -0,0 +1,395 @@
++import { useState, useEffect } from 'react';
++import { useNavigate } from 'react-router-dom';
++import { GraduationCap } from 'lucide-react';
++import { Button, Input, LoadingSpinner } from '../components/ui';
++import { useAuth } from '../contexts/AuthContext';
++import { supabase } from '../lib/supabase';
++
++interface StateData {
++  state: string;
++  cities: string[];
++}
++
++const NIGERIA_STATES: StateData[] = [
++  { state: 'Abia', cities: ['Umuahia', 'Aba', 'Arochukwu', 'Ohafia'] },
++  { state: 'Adamawa', cities: ['Yola', 'Mubi', 'Jimeta', 'Numan'] },
++  { state: 'Akwa Ibom', cities: ['Uyo', 'Eket', 'Ikot Ekpene', 'Oron'] },
++  { state: 'Anambra', cities: ['Awka', 'Onitsha', 'Nnewi', 'Ekwulobia'] },
++  { state: 'Bauchi', cities: ['Bauchi', 'Azare', 'Misau', 'Ningi'] },
++  { state: 'Bayelsa', cities: ['Yenagoa', 'Brass', 'Sagbama', 'Ogbia'] },
++  { state: 'Benue', cities: ['Makurdi', 'Gboko', 'Otukpo', 'Katsina-Ala'] },
++  { state: 'Borno', cities: ['Maiduguri', 'Biu', 'Bama', 'Dikwa'] },
++  { state: 'Cross River', cities: ['Calabar', 'Ugep', 'Ikom', 'Ogoja'] },
++  { state: 'Delta', cities: ['Asaba', 'Warri', 'Sapele', 'Ughelli'] },
++  { state: 'Ebonyi', cities: ['Abakaliki', 'Afikpo', 'Onueke', 'Ezza'] },
++  { state: 'Edo', cities: ['Benin City', 'Auchi', 'Ekpoma', 'Uromi'] },
++  { state: 'Ekiti', cities: ['Ado-Ekiti', 'Ikere-Ekiti', 'Ise-Ekiti', 'Oye-Ekiti'] },
++  { state: 'Enugu', cities: ['Enugu', 'Nsukka', 'Oji River', 'Awgu'] },
++  { state: 'FCT (Abuja)', cities: ['Abuja Municipal', 'Gwagwalada', 'Kuje', 'Bwari', 'Kubwa'] },
++  { state: 'Gombe', cities: ['Gombe', 'Kaltungo', 'Billiri', 'Dukku'] },
++  { state: 'Imo', cities: ['Owerri', 'Orlu', 'Okigwe', 'Mbaise'] },
++  { state: 'Jigawa', cities: ['Dutse', 'Hadejia', 'Gumel', 'Birnin Kudu'] },
++  { state: 'Kaduna', cities: ['Kaduna', 'Zaria', 'Kafanchan', 'Kagoro'] },
++  { state: 'Kano', cities: ['Kano', 'Wudil', 'Rano', 'Gwarzo'] },
++  { state: 'Katsina', cities: ['Katsina', 'Funtua', 'Daura', 'Malumfashi'] },
++  { state: 'Kebbi', cities: ['Birnin Kebbi', 'Argungu', 'Yauri', 'Zuru'] },
++  { state: 'Kogi', cities: ['Lokoja', 'Okene', 'Kabba', 'Idah'] },
++  { state: 'Kwara', cities: ['Ilorin', 'Offa', 'Omu-Aran', 'Patigi'] },
++  { state: 'Lagos', cities: ['Lagos Island', 'Ikeja', 'Lekki', 'Surulere', 'Badagry', 'Epe'] },
++  { state: 'Nasarawa', cities: ['Lafia', 'Keffi', 'Akwanga', 'Nasarawa'] },
++  { state: 'Niger', cities: ['Minna', 'Bida', 'Suleja', 'Kontagora'] },
++  { state: 'Ogun', cities: ['Abeokuta', 'Sagamu', 'Ijebu Ode', 'Ota'] },
++  { state: 'Ondo', cities: ['Akure', 'Ondo City', 'Owo', 'Ikare-Akoko'] },
++  { state: 'Osun', cities: ['Osogbo', 'Ile-Ife', 'Ilesa', 'Ede'] },
++  { state: 'Oyo', cities: ['Ibadan', 'Ogbomoso', 'Oyo Town', 'Saki'] },
++  { state: 'Plateau', cities: ['Jos', 'Bukuru', 'Pankshin', 'Shendam'] },
++  { state: 'Rivers', cities: ['Port Harcourt', 'Bonny', 'Eleme', 'Ahoada'] },
++  { state: 'Sokoto', cities: ['Sokoto', 'Tambuwal', 'Wurno', 'Gwadabawa'] },
++  { state: 'Taraba', cities: ['Jalingo', 'Wukari', 'Bali', 'Gembu'] },
++  { state: 'Yobe', cities: ['Damaturu', 'Potiskum', 'Gashua', 'Nguru'] },
++  { state: 'Zamfara', cities: ['Gusau', 'Kaura Namoda', 'Talata Mafara', 'Anka'] },
++];
++
++const getCitiesForState = (stateName: string): string[] => {
++  const found = NIGERIA_STATES.find((s) => s.state === stateName);
++  return found ? found.cities : [];
++};
++
++export function OnboardingPage() {
++  const navigate = useNavigate();
++  const { user, profile, loading: authLoading, completeOnboarding, error: authError, signOut } = useAuth();
++
++  const [role, setRole] = useState<'student' | 'organization'>('student');
++  const [roleResolved, setRoleResolved] = useState(false);
++  const [fullName, setFullName] = useState('');
++  const [institution, setInstitution] = useState('');
++  const [matricNumber, setMatricNumber] = useState('');
++  const [fieldOfStudy, setFieldOfStudy] = useState('');
++  const [industry, setIndustry] = useState('');
++  const [cacNumber, setCacNumber] = useState('');
++  const [contactName, setContactName] = useState('');
++  const [state, setState] = useState('');
++  const [city, setCity] = useState('');
++  const [description, setDescription] = useState('');
++  const [website, setWebsite] = useState('');
++  const [address, setAddress] = useState('');
++
++  const [loading, setLoading] = useState(false);
++  const [error, setError] = useState<string | null>(null);
++
++  const availableCities = getCitiesForState(state);
++
++  // Guards: unverified/unauthenticated users go back to sign in;
++  // users who already have a profile are already onboarded.
++  useEffect(() => {
++    if (authLoading) return;
++    if (!user) {
++      navigate('/auth/signin');
++      return;
++    }
++    if (profile) {
++      const target =
++        profile.role === 'admin'
++          ? '/dashboard/admin'
++          : profile.role === 'organization'
++          ? '/dashboard/organization'
++          : '/dashboard/student';
++      navigate(target);
++    }
++  }, [user, profile, authLoading, navigate]);
++
++  // Pull the intended role chosen at signup time out of the user's metadata.
++  useEffect(() => {
++    const resolveRole = async () => {
++      const {
++        data: { user: currentUser },
++      } = await supabase.auth.getUser();
++      const pendingRole = currentUser?.user_metadata?.pending_role;
++      if (pendingRole === 'organization' || pendingRole === 'student') {
++        setRole(pendingRole);
++      }
++      setRoleResolved(true);
++    };
++    if (user) resolveRole();
++  }, [user]);
++
++  const handleSubmit = async (e: React.FormEvent) => {
++    e.preventDefault();
++    setError(null);
++    setLoading(true);
++
++    try {
++      const result = await completeOnboarding(fullName, role, {
++        institution,
++        matric_number: matricNumber,
++        department: fieldOfStudy,
++        industry,
++        cac_number: cacNumber,
++        contact_name: contactName,
++        state,
++        city,
++        description,
++        website,
++        address,
++      });
++
++      if (result.error) {
++        setError(result.error);
++      } else {
++        const target = role === 'organization' ? '/dashboard/organization' : '/dashboard/student';
++        navigate(target);
++      }
++    } catch {
++      setError('An unexpected error occurred');
++    } finally {
++      setLoading(false);
++    }
++  };
++
++  if (authLoading || !roleResolved) {
++    return (
++      <div className="min-h-screen flex items-center justify-center bg-secondary-50">
++        <LoadingSpinner size="lg" className="text-primary-600" />
++      </div>
++    );
++  }
++
++  return (
++    <div className="min-h-screen flex flex-col bg-secondary-50">
++      <div className="w-full bg-gradient-to-br from-primary-600 to-primary-900 p-6 sm:p-8 md:p-10 text-white relative overflow-hidden flex flex-col justify-center items-center text-center border-b-4 border-primary-500 shadow-sm">
++        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.1),transparent)]" />
++        <div className="max-w-xl relative z-10 space-y-2">
++          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-xs sm:text-sm font-medium">
++            <span>✅ Email verified</span>
++          </div>
++          <h2 className="font-heading text-xl sm:text-2xl font-bold leading-tight">
++            Just a few more details
++          </h2>
++          <p className="text-primary-100 text-xs sm:text-sm leading-relaxed max-w-md mx-auto">
++            Complete your {role === 'student' ? 'student' : 'organization'} profile to get to your dashboard.
++          </p>
++        </div>
++      </div>
++
++      <div className="w-full flex-1 flex flex-col justify-start py-8 px-4 sm:px-6 lg:px-8">
++        <div className="max-w-md mx-auto w-full bg-white p-6 sm:p-8 rounded-2xl border border-secondary-200/60 shadow-sm">
++          <div className="mb-6 flex items-center gap-2.5">
++            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-sm">
++              <GraduationCap className="w-4 h-4 text-white" />
++            </div>
++            <span className="font-heading font-bold text-lg text-secondary-900">
++              SIWES<span className="text-primary-600">Connect</span>
++            </span>
++          </div>
++
++          <form onSubmit={handleSubmit} className="space-y-4">
++            {role === 'student' ? (
++              <div className="space-y-4 border-l-2 border-green-600 pl-3 bg-secondary-50/50 p-3 rounded-r-xl">
++                <Input label="Full Name" type="text" placeholder="Musa Ibrahim" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
++                <div>
++                  <label className="block text-xs font-semibold text-secondary-700 mb-1">Field of Study</label>
++                  <select
++                    required
++                    value={fieldOfStudy}
++                    onChange={(e) => setFieldOfStudy(e.target.value)}
++                    className="w-full px-3 py-2.5 rounded-xl border border-secondary-200 bg-white text-secondary-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
++                  >
++                    <option value="">Select your field</option>
++                    <option value="engineering">Engineering & Technology</option>
++                    <option value="environmental">Environmental Sciences (Architecture, Estate Mgmt, Surveying)</option>
++                    <option value="sciences">Sciences (Computer Science, Biochemistry, Microbiology, etc.)</option>
++                    <option value="agriculture">Agriculture</option>
++                    <option value="medical">Medical & Health Sciences</option>
++                    <option value="education">Education</option>
++                    <option value="arts_design">Arts & Design</option>
++                    <option value="hospitality">Hospitality & Management</option>
++                    <option value="mass_comm">Mass Communication & Media</option>
++                    <option value="veterinary">Veterinary Medicine</option>
++                  </select>
++                </div>
++                <div>
++                  <label className="block text-xs font-semibold text-secondary-700 mb-1">Matriculation Number</label>
++                  <input
++                    type="text"
++                    placeholder="e.g. 2021/123456"
++                    value={matricNumber}
++                    onChange={(e) => setMatricNumber(e.target.value)}
++                    required
++                    className="w-full px-3 py-2.5 rounded-xl border border-secondary-200 bg-white text-secondary-800 placeholder-secondary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 text-sm transition-all"
++                  />
++                </div>
++                <div>
++                  <label className="block text-xs font-semibold text-secondary-700 mb-1">Name of Institution</label>
++                  <input
++                    type="text"
++                    placeholder="e.g. University of Nigeria"
++                    value={institution}
++                    onChange={(e) => setInstitution(e.target.value)}
++                    required
++                    className="w-full px-3 py-2.5 rounded-xl border border-secondary-200 bg-white text-secondary-800 placeholder-secondary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 text-sm transition-all"
++                  />
++                </div>
++                <div>
++                  <label className="block text-xs font-semibold text-secondary-700 mb-1">State of Institution</label>
++                  <select
++                    value={state}
++                    onChange={(e) => setState(e.target.value)}
++                    required
++                    className="w-full px-3 py-2.5 rounded-xl border border-secondary-200 bg-white text-secondary-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
++                  >
++                    <option value="">Select state</option>
++                    {NIGERIA_STATES.map((s) => (
++                      <option key={s.state} value={s.state}>
++                        {s.state}
++                      </option>
++                    ))}
++                  </select>
++                </div>
++              </div>
++            ) : (
++              <div className="space-y-4 border-l-2 border-primary-500 pl-3 bg-secondary-50/50 p-3 rounded-r-xl">
++                <Input label="Company / Host Organization Name" type="text" placeholder="e.g. Innoson Motors or TechCorp" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
++
++                <div>
++                  <label className="block text-xs font-semibold text-secondary-700 mb-1">Corporate CAC RC Number</label>
++                  <input
++                    type="text"
++                    placeholder="RC-1234567"
++                    value={cacNumber}
++                    onChange={(e) => setCacNumber(e.target.value)}
++                    required
++                    className="w-full px-3 py-2.5 rounded-xl border border-secondary-200 bg-white text-secondary-800 placeholder-secondary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 text-sm transition-all"
++                  />
++                </div>
++
++                <div>
++                  <label className="block text-xs font-semibold text-secondary-700 mb-1">Street Address (optional)</label>
++                  <input
++                    type="text"
++                    placeholder="e.g. 15 Industrial Layout Road"
++                    value={address}
++                    onChange={(e) => setAddress(e.target.value)}
++                    className="w-full px-3 py-2.5 rounded-xl border border-secondary-200 bg-white text-secondary-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
++                  />
++                </div>
++
++                <div className="grid grid-cols-2 gap-3">
++                  <div>
++                    <label className="block text-[11px] font-semibold text-secondary-700 mb-1">State</label>
++                    <select
++                      required
++                      value={state}
++                      onChange={(e) => {
++                        setState(e.target.value);
++                        setCity('');
++                      }}
++                      className="w-full px-2.5 py-2.5 rounded-xl border border-secondary-200 bg-white text-secondary-800 text-xs focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
++                    >
++                      <option value="">Select state</option>
++                      {NIGERIA_STATES.map((s) => (
++                        <option key={s.state} value={s.state}>
++                          {s.state}
++                        </option>
++                      ))}
++                    </select>
++                  </div>
++                  <div>
++                    <label className="block text-[11px] font-semibold text-secondary-700 mb-1">City</label>
++                    <select
++                      required
++                      value={city}
++                      onChange={(e) => setCity(e.target.value)}
++                      disabled={!state}
++                      className="w-full px-2.5 py-2.5 rounded-xl border border-secondary-200 bg-white text-secondary-800 text-xs focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 disabled:bg-secondary-100 disabled:text-secondary-400"
++                    >
++                      <option value="">{state ? 'Select city' : 'Select state first'}</option>
++                      {availableCities.map((c) => (
++                        <option key={c} value={c}>
++                          {c}
++                        </option>
++                      ))}
++                    </select>
++                  </div>
++                </div>
++
++                <div>
++                  <label className="block text-[11px] font-semibold text-secondary-700 mb-1">Primary Sector</label>
++                  <select
++                    required
++                    value={industry}
++                    onChange={(e) => setIndustry(e.target.value)}
++                    className="w-full px-2.5 py-2.5 rounded-xl border border-secondary-200 bg-white text-secondary-800 text-xs focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
++                  >
++                    <option value="">Select sector</option>
++                    <option value="engineering">Engineering & Technology</option>
++                    <option value="environmental">Environmental Sciences</option>
++                    <option value="sciences">Sciences</option>
++                    <option value="agriculture">Agriculture</option>
++                    <option value="medical">Medical & Health Sciences</option>
++                    <option value="education">Education</option>
++                    <option value="arts_design">Arts & Design</option>
++                    <option value="hospitality">Hospitality & Management</option>
++                    <option value="mass_comm">Mass Communication & Media</option>
++                    <option value="veterinary">Veterinary Medicine</option>
++                  </select>
++                </div>
++
++                <div>
++                  <label className="block text-xs font-semibold text-secondary-700 mb-1">HR Representative / Contact Name</label>
++                  <input
++                    type="text"
++                    placeholder="Enter officer name"
++                    value={contactName}
++                    onChange={(e) => setContactName(e.target.value)}
++                    required
++                    className="w-full px-3 py-2.5 rounded-xl border border-secondary-200 bg-white text-secondary-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
++                  />
++                </div>
++
++                <div>
++                  <label className="block text-xs font-semibold text-secondary-700 mb-1">Company Description (optional)</label>
++                  <textarea
++                    rows={3}
++                    placeholder="Briefly describe what your organization does and what trainees can expect to learn."
++                    value={description}
++                    onChange={(e) => setDescription(e.target.value)}
++                    className="w-full px-3 py-2.5 rounded-xl border border-secondary-200 bg-white text-secondary-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
++                  />
++                </div>
++
++                <div>
++                  <label className="block text-xs font-semibold text-secondary-700 mb-1">Company Website (optional)</label>
++                  <input
++                    type="url"
++                    placeholder="https://yourcompany.com"
++                    value={website}
++                    onChange={(e) => setWebsite(e.target.value)}
++                    className="w-full px-3 py-2.5 rounded-xl border border-secondary-200 bg-white text-secondary-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
++                  />
++                </div>
++              </div>
++            )}
++
++            {(error || authError) && (
++              <div className="p-3 rounded-xl bg-error-50 border border-error-200">
++                <p className="text-xs text-error-700">{error || authError}</p>
++              </div>
++            )}
++
++            <Button type="submit" className="w-full bg-primary-600 hover:bg-primary-700 text-white font-medium" size="lg" isLoading={loading}>
++              Complete Profile & Go to Dashboard
++            </Button>
++          </form>
++
++          <button
++            type="button"
++            onClick={() => signOut()}
++            className="mt-4 w-full text-center text-xs text-secondary-400 hover:text-error-600"
++          >
++            Sign out
++          </button>
++        </div>
++      </div>
++    </div>
++  );
++}
+diff --git a/src/pages/OrganizationDashboardPage.tsx b/src/pages/OrganizationDashboardPage.tsx
+index 62fd9c8..eb4db9d 100644
+--- a/src/pages/OrganizationDashboardPage.tsx
++++ b/src/pages/OrganizationDashboardPage.tsx
+@@ -168,7 +168,8 @@ export function OrganizationDashboardPage() {
+   useEffect(() => {
+     if (authLoading) return;
+     if (!user) navigate('/auth/signin');
+-    else if (profile && profile.role !== 'organization') navigate('/dashboard');
++    else if (!profile) navigate('/onboarding');
++    else if (profile.role !== 'organization') navigate('/dashboard');
+   }, [user, profile, authLoading, navigate]);
+ 
+   // Data fetching
+@@ -433,7 +434,7 @@ const { data: docs } = await supabase
+                 )}
+               </button>
+               {showNotifications && (
+-                <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-xl border border-secondary-200 shadow-lg z-50 max-h-80 overflow-y-auto">
++                <div className="absolute right-0 top-full mt-2 w-[calc(100vw-2rem)] max-w-72 bg-white rounded-xl border border-secondary-200 shadow-lg z-50 max-h-80 overflow-y-auto">
+                   {notifications.length === 0 ? (
+                     <p className="p-4 text-sm text-secondary-500 text-center">No notifications yet.</p>
+                   ) : (
+@@ -538,7 +539,7 @@ const { data: docs } = await supabase
+                 )}
+               </button>
+               {showNotifications && (
+-                <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl border border-secondary-200 shadow-lg z-50 max-h-80 overflow-y-auto">
++                <div className="absolute right-0 top-full mt-2 w-[calc(100vw-2rem)] max-w-80 bg-white rounded-xl border border-secondary-200 shadow-lg z-50 max-h-80 overflow-y-auto">
+                   {notifications.length === 0 ? (
+                     <p className="p-4 text-sm text-secondary-500 text-center">No notifications yet.</p>
+                   ) : (
+diff --git a/src/pages/PlacementsPage.tsx b/src/pages/PlacementsPage.tsx
+index d60ce54..d3440ac 100644
+--- a/src/pages/PlacementsPage.tsx
++++ b/src/pages/PlacementsPage.tsx
+@@ -48,6 +48,7 @@ export function PlacementsPage() {
+ 
+   const fetchPlacements = async () => {
+     try {
++      const nowIso = new Date().toISOString();
+       const { data, error } = await supabase
+         .from('placements')
+         .select(`
+@@ -62,6 +63,7 @@ export function PlacementsPage() {
+           )
+         `)
+         .eq('is_active', true)
++        .or(`deadline.gte.${nowIso},deadline.is.null`)
+         .order('created_at', { ascending: false });
+ 
+       if (error) throw error;
+diff --git a/src/pages/StudentDashboardPage.tsx b/src/pages/StudentDashboardPage.tsx
+index de3928f..e03ac13 100644
+--- a/src/pages/StudentDashboardPage.tsx
++++ b/src/pages/StudentDashboardPage.tsx
+@@ -104,8 +104,10 @@ export function StudentDashboardPage() {
+   useEffect(() => {
+     if (!authLoading && !user) {
+       navigate('/auth');
++    } else if (!authLoading && user && !profile) {
++      navigate('/onboarding');
+     }
+-  }, [user, authLoading, navigate]);
++  }, [user, profile, authLoading, navigate]);
+ 
+   useEffect(() => {
+     if (!user) return;
+@@ -457,7 +459,7 @@ export function StudentDashboardPage() {
+                   )}
+                 </button>
+                 {showNotifications && (
+-                  <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-xl border border-secondary-200 shadow-lg z-50 max-h-80 overflow-y-auto">
++                  <div className="absolute right-0 top-full mt-2 w-[calc(100vw-2rem)] max-w-72 bg-white rounded-xl border border-secondary-200 shadow-lg z-50 max-h-80 overflow-y-auto">
+                     {notifications.length === 0 ? (
+                       <p className="p-4 text-sm text-secondary-500 text-center">No notifications yet.</p>
+                     ) : (
+@@ -524,7 +526,7 @@ export function StudentDashboardPage() {
+                 )}
+               </button>
+               {showNotifications && (
+-                <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl border border-secondary-200 shadow-lg z-50 max-h-80 overflow-y-auto">
++                <div className="absolute right-0 top-full mt-2 w-[calc(100vw-2rem)] max-w-80 bg-white rounded-xl border border-secondary-200 shadow-lg z-50 max-h-80 overflow-y-auto">
+                   {notifications.length === 0 ? (
+                     <p className="p-4 text-sm text-secondary-500 text-center">No notifications yet.</p>
+                   ) : (
+diff --git a/src/pages/index.ts b/src/pages/index.ts
+index 44122e7..3f67690 100644
+--- a/src/pages/index.ts
++++ b/src/pages/index.ts
+@@ -1,5 +1,6 @@
+ export { HomePage } from './HomePage';
+ export { AuthPage } from './AuthPage';
++export { OnboardingPage } from './OnboardingPage';
+ export { PlacementsPage } from './PlacementsPage';
+ export { DashboardPage } from './DashboardPage';
+ export { StudentDashboardPage } from './StudentDashboardPage';

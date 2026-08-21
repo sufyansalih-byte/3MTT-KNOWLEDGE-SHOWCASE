@@ -38,6 +38,10 @@ interface AuthContextType {
   signUp: (
     email: string,
     password: string,
+    role: 'student' | 'organization'
+  ) => Promise<{ error: string | null; needsEmailConfirmation: boolean }>;
+
+  completeOnboarding: (
     fullName: string,
     role: 'student' | 'organization',
     extra?: SignUpExtra
@@ -150,6 +154,64 @@ export function AuthProvider({
     async (
       email: string,
       password: string,
+      role: 'student' | 'organization'
+    ): Promise<{ error: string | null; needsEmailConfirmation: boolean }> => {
+      setError(null);
+      setLoading(true);
+
+      try {
+        const normalizedEmail = email.trim().toLowerCase();
+
+        if (!normalizedEmail || !password) {
+          const message = 'Email and password are required';
+          setError(message);
+          return { error: message, needsEmailConfirmation: false };
+        }
+
+        if (password.length < 6) {
+          const message = 'Password must be at least 6 characters';
+          setError(message);
+          return { error: message, needsEmailConfirmation: false };
+        }
+
+        const { data: authData, error: signUpError } = await supabase.auth.signUp({
+          email: normalizedEmail,
+          password,
+          options: {
+            data: { pending_role: role },
+            emailRedirectTo: `${window.location.origin}/onboarding`,
+          },
+        });
+
+        if (signUpError) {
+          setError(signUpError.message);
+          return { error: signUpError.message, needsEmailConfirmation: false };
+        }
+
+        // If Supabase email confirmation is enabled, signUp() returns a user
+        // but no session — the user must click the emailed link before they
+        // can do anything that requires auth.uid() (like inserting a profile row).
+        const needsEmailConfirmation = !authData.session;
+
+        if (authData.session && authData.user) {
+          await loadProfile(authData.user.id, authData.user.email ?? normalizedEmail);
+        }
+
+        return { error: null, needsEmailConfirmation };
+      } catch (err) {
+        console.error('Unexpected signup error:', err);
+        const message = err instanceof Error ? err.message : 'Something went wrong during signup.';
+        setError(message);
+        return { error: message, needsEmailConfirmation: false };
+      } finally {
+        setLoading(false);
+      }
+    },
+    [loadProfile]
+  );
+
+  const completeOnboarding = useCallback(
+    async (
       fullName: string,
       role: 'student' | 'organization',
       extra?: SignUpExtra
@@ -158,161 +220,81 @@ export function AuthProvider({
       setLoading(true);
 
       try {
-        const normalizedEmail = email
-          .trim()
-          .toLowerCase();
+        const {
+          data: { user: currentUser },
+        } = await supabase.auth.getUser();
+
+        if (!currentUser) {
+          const message = 'Your session has expired. Please sign in again.';
+          setError(message);
+          return { error: message };
+        }
 
         const normalizedFullName = fullName.trim();
+        const normalizedEmail = (currentUser.email ?? '').toLowerCase();
 
-        if (
-          !normalizedEmail ||
-          !password ||
-          !normalizedFullName
-        ) {
-          const message =
-            'All fields are required';
-
+        if (!normalizedFullName) {
+          const message = 'Full name is required';
           setError(message);
-
-          return {
-            error: message,
-          };
+          return { error: message };
         }
 
-        if (password.length < 6) {
-          const message =
-            'Password must be at least 6 characters';
-
-          setError(message);
-
-          return {
-            error: message,
-          };
-        }
-
-        /*
-         * Email confirmation is intentionally not handled.
-         * Supabase email confirmation is disabled for this MVP.
-         */
-
-        const {
-          data: authData,
-          error: signUpError,
-        } = await supabase.auth.signUp({
+        const { error: profileError } = await supabase.from('profiles').insert({
+          id: currentUser.id,
           email: normalizedEmail,
-          password,
+          full_name: normalizedFullName,
+          role,
         });
-
-        if (signUpError) {
-          setError(signUpError.message);
-
-          return {
-            error: signUpError.message,
-          };
-        }
-
-        const newUserId = authData.user?.id;
-
-        if (!newUserId) {
-          const message =
-            'Could not create user. Please try again.';
-
-          setError(message);
-
-          return {
-            error: message,
-          };
-        }
-
-        const { error: profileError } =
-          await supabase.from('profiles').insert({
-            id: newUserId,
-            email: normalizedEmail,
-            full_name: normalizedFullName,
-            role,
-          });
 
         if (profileError) {
           setError(profileError.message);
-
-          return {
-            error: profileError.message,
-          };
+          return { error: profileError.message };
         }
 
         if (role === 'organization') {
-          const { error: organizationError } =
-            await supabase.from('organizations').insert({
-              profile_id: newUserId,
-              name: normalizedFullName,
-              industry: extra?.industry || null,
-              cac_number: extra?.cac_number || null,
-              contact_name: extra?.contact_name || null,
-              state: extra?.state || null,
-              city: extra?.city || null,
-              description: extra?.description || null,
-              website: extra?.website || null,
-              address: extra?.address || null,
-              is_verified: false,
-            });
+          const { error: organizationError } = await supabase.from('organizations').insert({
+            profile_id: currentUser.id,
+            name: normalizedFullName,
+            industry: extra?.industry || null,
+            cac_number: extra?.cac_number || null,
+            contact_name: extra?.contact_name || null,
+            state: extra?.state || null,
+            city: extra?.city || null,
+            description: extra?.description || null,
+            website: extra?.website || null,
+            address: extra?.address || null,
+            is_verified: false,
+          });
 
           if (organizationError) {
-            setError(
-              organizationError.message
-            );
-
-            return {
-              error: organizationError.message,
-            };
+            setError(organizationError.message);
+            return { error: organizationError.message };
           }
         }
 
         if (role === 'student') {
-          const { error: studentError } =
-            await supabase.from('students').insert({
-              profile_id: newUserId,
-              institution:
-                extra?.institution || '',
-              matric_number:
-                extra?.matric_number || null,
-              department:
-                extra?.department || null,
-              skills: [],
-            });
+          const { error: studentError } = await supabase.from('students').insert({
+            profile_id: currentUser.id,
+            institution: extra?.institution || '',
+            matric_number: extra?.matric_number || null,
+            department: extra?.department || null,
+            skills: [],
+          });
 
           if (studentError) {
             setError(studentError.message);
-
-            return {
-              error: studentError.message,
-            };
+            return { error: studentError.message };
           }
         }
 
-        await loadProfile(
-          newUserId,
-          normalizedEmail
-        );
+        await loadProfile(currentUser.id, normalizedEmail);
 
-        return {
-          error: null,
-        };
+        return { error: null };
       } catch (err) {
-        console.error(
-          'Unexpected signup error:',
-          err
-        );
-
-        const message =
-          err instanceof Error
-            ? err.message
-            : 'Something went wrong during signup.';
-
+        console.error('Unexpected onboarding error:', err);
+        const message = err instanceof Error ? err.message : 'Something went wrong completing your profile.';
         setError(message);
-
-        return {
-          error: message,
-        };
+        return { error: message };
       } finally {
         setLoading(false);
       }
@@ -410,6 +392,7 @@ export function AuthProvider({
         loading,
         error,
         signUp,
+        completeOnboarding,
         signIn,
         signOut,
       }}

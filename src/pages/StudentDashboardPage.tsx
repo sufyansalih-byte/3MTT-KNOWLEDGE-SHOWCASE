@@ -104,8 +104,10 @@ export function StudentDashboardPage() {
   useEffect(() => {
     if (!authLoading && !user) {
       navigate('/auth');
+    } else if (!authLoading && user && !profile) {
+      navigate('/onboarding');
     }
-  }, [user, authLoading, navigate]);
+  }, [user, profile, authLoading, navigate]);
 
   useEffect(() => {
     if (!user) return;
@@ -457,7 +459,7 @@ export function StudentDashboardPage() {
                   )}
                 </button>
                 {showNotifications && (
-                  <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-xl border border-secondary-200 shadow-lg z-50 max-h-80 overflow-y-auto">
+                  <div className="absolute right-0 top-full mt-2 w-[calc(100vw-2rem)] max-w-72 bg-white rounded-xl border border-secondary-200 shadow-lg z-50 max-h-80 overflow-y-auto">
                     {notifications.length === 0 ? (
                       <p className="p-4 text-sm text-secondary-500 text-center">No notifications yet.</p>
                     ) : (
@@ -524,7 +526,7 @@ export function StudentDashboardPage() {
                 )}
               </button>
               {showNotifications && (
-                <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl border border-secondary-200 shadow-lg z-50 max-h-80 overflow-y-auto">
+                <div className="absolute right-0 top-full mt-2 w-[calc(100vw-2rem)] max-w-80 bg-white rounded-xl border border-secondary-200 shadow-lg z-50 max-h-80 overflow-y-auto">
                   {notifications.length === 0 ? (
                     <p className="p-4 text-sm text-secondary-500 text-center">No notifications yet.</p>
                   ) : (

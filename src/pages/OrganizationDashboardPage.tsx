@@ -168,7 +168,8 @@ export function OrganizationDashboardPage() {
   useEffect(() => {
     if (authLoading) return;
     if (!user) navigate('/auth/signin');
-    else if (profile && profile.role !== 'organization') navigate('/dashboard');
+    else if (!profile) navigate('/onboarding');
+    else if (profile.role !== 'organization') navigate('/dashboard');
   }, [user, profile, authLoading, navigate]);
 
   // Data fetching
@@ -433,7 +434,7 @@ const { data: docs } = await supabase
                 )}
               </button>
               {showNotifications && (
-                <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-xl border border-secondary-200 shadow-lg z-50 max-h-80 overflow-y-auto">
+                <div className="absolute right-0 top-full mt-2 w-[calc(100vw-2rem)] max-w-72 bg-white rounded-xl border border-secondary-200 shadow-lg z-50 max-h-80 overflow-y-auto">
                   {notifications.length === 0 ? (
                     <p className="p-4 text-sm text-secondary-500 text-center">No notifications yet.</p>
                   ) : (
@@ -538,7 +539,7 @@ const { data: docs } = await supabase
                 )}
               </button>
               {showNotifications && (
-                <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl border border-secondary-200 shadow-lg z-50 max-h-80 overflow-y-auto">
+                <div className="absolute right-0 top-full mt-2 w-[calc(100vw-2rem)] max-w-80 bg-white rounded-xl border border-secondary-200 shadow-lg z-50 max-h-80 overflow-y-auto">
                   {notifications.length === 0 ? (
                     <p className="p-4 text-sm text-secondary-500 text-center">No notifications yet.</p>
                   ) : (
